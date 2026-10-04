@@ -1,46 +1,43 @@
-import { Collection, Db, MongoClient } from 'mongodb'
-//npm i dotenv : dùng để tải thử viện để xài .env
+import { PrismaClient } from '@prisma/client'
+//npm i dotenv : dùng để tải thư viện để xài .env
 import dotenv from 'dotenv'
-import User from '~/models/schemas/User.schema'
-import RefreshToken from '~/models/schemas/RefreshToken.schema'
 dotenv.config() //kích hoạt liên kết env
-const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@shoppingcard.nlpfy.mongodb.net/?retryWrites=true&w=majority&appName=shoppingCard`
-
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 
 class DatabaseService {
-  private client: MongoClient
-  private db: Db
+  //PrismaClient đã tự quản lý connection pool nên chỉ cần 1 instance cho cả app
+  private client: PrismaClient
   constructor() {
-    this.client = new MongoClient(uri)
-    this.db = this.client.db(process.env.DB_NAME)
+    this.client = new PrismaClient()
   }
-  //method
+
   async connect() {
     try {
-      // Connect the client to the server	(optional starting in v4.7)
-      // await client.connect() // từ 4.7 trở lên ko cần câu lệnh này nữa (optional)
-      // Send a ping to confirm a successful connection
-      await this.db.command({ ping: 1 })
-      console.log('Pinged your deployment. You successfully connected to MongoDB!')
+      // $connect là optional (Prisma tự connect khi query đầu tiên), nhưng gọi sớm để lỗi kết nối hiện ngay lúc bật server
+      await this.client.$connect()
+      await this.client.$queryRaw`SELECT 1`
+      console.log('Kết nối PostgreSQL thành công!')
     } catch (err) {
-      //finally {
-      // Ensures that the client will close when you finish/error
-      //await client.close()  -> khi đã bật sever thì ko cần tắt
       console.log(err)
       throw err
     }
   }
 
-  //hàm lấy instance của collection USERS
-  get users(): Collection<User> {
-    // mình phải dạy cho nó ở trên đó có gì chứ ko nó sẽ hiểu là Document nên mình phải dạy nó
-    //accessor property
-    return this.db.collection(process.env.DB_USERS_COLLECTION as string) // nếu ko có as String nó sẽ báo lỗi vì sợ ko xd đc kiểu dữ liệu
+  async disconnect() {
+    await this.client.$disconnect()
   }
 
-  get refresh_tokens(): Collection<RefreshToken> {
-    return this.db.collection(process.env.DB_REFRESH_TOKENS_COLLECTION as string)
+  //hàm lấy delegate của bảng users
+  get users() {
+    return this.client.user
+  }
+
+  get refreshTokens() {
+    return this.client.refreshToken
+  }
+
+  //dùng khi cần nhiều thao tác phải thành công/thất bại cùng nhau
+  get $transaction() {
+    return this.client.$transaction.bind(this.client)
   }
 }
 

@@ -142,3 +142,5 @@ dist
 .svelte-kit
 
 # End of https://www.toptal.com/developers/gitignore/api/node
+# Files người dùng upload (ảnh, video) - không đưa lên git
+uploads/

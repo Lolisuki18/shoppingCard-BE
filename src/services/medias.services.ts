@@ -1,6 +1,6 @@
 import { Request } from 'express'
 import sharp from 'sharp'
-import { UPLOAD_IMAGE_DIR, UPLOAD_VIDEO_DIR } from '~/constants/dir'
+import { UPLOAD_IMAGE_DIR } from '~/constants/dir'
 import { getNameFromFullNameFile, handleUploadImage, handleUploadVideo } from '~/utils/file'
 import fs from 'fs'
 import { MediaType } from '~/constants/enums'
@@ -23,7 +23,7 @@ class MediasService {
         // xử lý file bằng sharp
         //sharp sẽ nhận vào đường dẫn ucar file cần xử lý và xử lý
         //đường đẫn đến cái file cần optimize
-        const info = await sharp(file.filepath).jpeg().toFile(newPath)
+        await sharp(file.filepath).jpeg().toFile(newPath)
 
         // console.log(info)
         // console.log(newPath)
@@ -55,7 +55,6 @@ class MediasService {
     const result = await Promise.all(
       files.map(async (file) => {
         const newFilename = file.newFilename
-        const newPath = UPLOAD_VIDEO_DIR + '/' + newFilename // đường dẫn mới của file sau khi xử lý // đường dẫn mới
 
         return {
           url: `http://localhost:3000/static/video/${newFilename}`,

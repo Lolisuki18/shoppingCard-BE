@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// verify: 0 = Unverified, 1 = Verified, 2 = Banned  (UserVerifyStatus trong src/constants/enums.ts)
+// role:   0 = Admin, 1 = Staff, 2 = User            (USER_ROLE trong src/constants/enums.ts)
+model User {
+  id                    String         @id @default(uuid()) @db.Uuid
+  name                  String         @default("")
+  email                 String         @unique
+  date_of_birth         DateTime       @default(now()) @db.Date
+  password              String
+  email_verify_token    String         @default("")
+  forgot_password_token String         @default("")
+  verify                Int            @default(0)
+  bio                   String         @default("")
+  location              String         @default("")
+  website               String         @default("")
+  username              String         @unique
+  avatar                String         @default("")
+  cover_photo           String         @default("")
+  role                  Int            @default(2)
+  created_at            DateTime       @default(now())
+  updated_at            DateTime       @updatedAt
+  refresh_tokens        RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid()) @db.Uuid
+  token      String   @unique
+  user_id    String   @db.Uuid
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("refresh_tokens")
+}

@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: shoppingcard-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-shoppingcard}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shoppingcard}
+      POSTGRES_DB: ${POSTGRES_DB:-shoppingcard}
+    ports:
+      # 5433 ở máy host để không đụng Postgres cài sẵn (thường chiếm 5432)
+      - '${POSTGRES_PORT:-5433}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-shoppingcard} -d ${POSTGRES_DB:-shoppingcard}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:

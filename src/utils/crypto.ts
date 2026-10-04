@@ -1,15 +1,14 @@
-//
+import bcrypt from 'bcryptjs'
 
-import { createHash } from 'crypto'
-import dotenv from 'dotenv'
-dotenv.config()
-//đoạn coden này sẽ mã hoá 1 nội dung nào đó về thành sha256
-//đoạn code này của google
-function sha256(content: string) {
-  return createHash('sha256').update(content).digest('hex')
+//số vòng băm của bcrypt: càng cao càng chậm (và càng khó brute-force), 10-12 là mức phổ biến
+const SALT_ROUNDS = 10
+
+//hàm nhận vào password và băm bằng bcrypt (tự thêm salt ngẫu nhiên, nên cùng 1 password sẽ ra các hash khác nhau)
+export function hashPassword(password: string) {
+  return bcrypt.hash(password, SALT_ROUNDS)
 }
 
-//hàm nhận vào password và mã hoá password đó bằng hàm sha256 của mình
-export function hashPassword(password: string) {
-  return sha256(password + process.env.PASSWORD_SECRET)
+//so sánh password người dùng nhập với hash đã lưu trong database
+export function comparePassword(password: string, hash: string) {
+  return bcrypt.compare(password, hash)
 }

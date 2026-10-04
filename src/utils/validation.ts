@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
-import { body, validationResult, ContextRunner, ValidationChain } from 'express-validator'
+import { validationResult, ValidationChain } from 'express-validator'
 import { RunnableValidationChains } from 'express-validator/lib/middlewares/schema'
 import HTTP_STATUS from '~/constants/httpStatus'
 import { EntityError, ErrorWithStatus } from '~/models/Errors'

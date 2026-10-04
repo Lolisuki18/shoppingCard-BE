@@ -1,4 +1,4 @@
-import express, { Router } from 'express'
+import { Router } from 'express'
 import { uploadImageController, uploadVideoController } from '~/controllers/medias.controllers'
 import { accessTokenValidation } from '~/middlewares/users.middlewares'
 import { wrapAsync } from '~/utils/handlers'

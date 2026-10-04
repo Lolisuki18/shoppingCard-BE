@@ -1,5 +1,4 @@
 //controller là tầng xử lý logic và call database thông qua services
-import { error } from 'console'
 import { NextFunction, Request, Response } from 'express'
 import {
   ChangePasswordReqBody,
@@ -20,7 +19,6 @@ import { ErrorWithStatus } from '~/models/Errors'
 import HTTP_STATUS from '~/constants/httpStatus'
 import { USERS_MESSAGES } from '~/constants/messages'
 import { UserVerifyStatus } from '~/constants/enums'
-import User from '~/models/schemas/User.schema'
 
 // export const loginController = (req: Request, res: Response) => {
 //   //thêm tý logic trước khi trả kq cho người dùng

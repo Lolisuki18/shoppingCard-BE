@@ -1,6 +1,6 @@
 import fs from 'fs' // giúp cho mình thao tác file|folder trong hệ thống của mình
 import { Request } from 'express'
-import formidable, { File, Files } from 'formidable'
+import formidable, { File } from 'formidable'
 
 import { UPLOAD_IMAGE_TEMP_DIR, UPLOAD_VIDEO_DIR, UPLOAD_VIDEO_TEMP_DIR } from '~/constants/dir'
 //initFolder : hàm kiểm tra xem có folder upload không?

@@ -1,5 +1,4 @@
-import { promises } from 'dns'
-import express, { Request, Response } from 'express'
+import express from 'express'
 import {
   changePasswordController,
   emailVerifyController,

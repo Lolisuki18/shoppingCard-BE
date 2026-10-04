@@ -1,14 +1,12 @@
 //import 3 interface giúp mô tả req , res, next do express cung cấp
 
-import { Verify } from 'crypto'
-import { Request, Response, NextFunction } from 'express'
-import { checkSchema, ParamSchema, validationResult } from 'express-validator'
-import { JsonWebTokenError, VerifyErrors } from 'jsonwebtoken'
-import { capitalize, pick, values } from 'lodash'
+import { Request } from 'express'
+import { checkSchema, ParamSchema } from 'express-validator'
+import { JsonWebTokenError } from 'jsonwebtoken'
+import { capitalize } from 'lodash'
 import HTTP_STATUS from '~/constants/httpStatus'
 import { USERS_MESSAGES } from '~/constants/messages'
 import { ErrorWithStatus } from '~/models/Errors'
-import RefreshToken from '~/models/schemas/RefreshToken.schema'
 import { verifyToken } from '~/utils/jwt'
 import { validate } from '~/utils/validation'
 import dotenv from 'dotenv'

@@ -1,9 +1,5 @@
 import { Router } from 'express'
-import {
-  serveImageController,
-  serveVideoController,
-  serveVideoStreamController
-} from '~/controllers/static.controllers'
+import { serveImageController, serveVideoStreamController } from '~/controllers/static.controllers'
 import { wrapAsync } from '~/utils/handlers'
 
 const staticRouter = Router()
