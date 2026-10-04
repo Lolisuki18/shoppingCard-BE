@@ -6,7 +6,9 @@ const HTTP_STATUS = {
   PARTIAL_CONTENT: 206, //lấy 1 phần của nội dung thôi chứ khong lấy hết
   UNPROCESSABLE_ENTITY: 422,
   UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
   NOT_FOUND: 404,
+  CONFLICT: 409,
   INTERNAL_SERVER_ERROR: 500,
   BAD_REQUEST: 400
 } as const

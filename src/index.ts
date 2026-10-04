@@ -7,6 +7,11 @@ import { defaultErrorHandler } from './middlewares/error.middleware'
 import mediaRouter from './routes/medias.routers'
 import { initFolder } from './utils/file'
 import staticRouter from './routes/static.routers'
+import categoryRouter from './routes/categories.routers'
+import productRouter from './routes/products.routers'
+import cartRouter from './routes/carts.routers'
+import orderRouter from './routes/orders.routers'
+import adminRouter from './routes/admin.routers'
 
 dotenv.config()
 const app = express()
@@ -20,6 +25,11 @@ app.use(express.json()) // cho sever xài 1 middleware biến đổi json -> ko 
 app.use('/users', userRouter)
 app.use('/medias', mediaRouter)
 app.use('/static', staticRouter)
+app.use('/categories', categoryRouter)
+app.use('/products', productRouter)
+app.use('/cart', cartRouter)
+app.use('/orders', orderRouter)
+app.use('/admin', adminRouter)
 //http://localhost:3000/users/login body{email, password}
 
 app.use(defaultErrorHandler)

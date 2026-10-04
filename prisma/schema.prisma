@@ -28,6 +28,8 @@ model User {
   created_at            DateTime       @default(now())
   updated_at            DateTime       @updatedAt
   refresh_tokens        RefreshToken[]
+  cart_items            CartItem[]
+  orders                Order[]
 
   @@map("users")
 }
@@ -41,4 +43,96 @@ model RefreshToken {
 
   @@index([user_id])
   @@map("refresh_tokens")
+}
+
+enum OrderStatus {
+  Pending // chờ xác nhận
+  Confirmed // đã xác nhận
+  Shipping // đang giao
+  Delivered // đã giao
+  Cancelled // đã huỷ
+}
+
+// Giá tiền lưu bằng số nguyên theo đơn vị nhỏ nhất của tiền tệ (VND không có phần lẻ)
+model Category {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String    @unique
+  slug        String    @unique
+  description String    @default("")
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  products    Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id          String      @id @default(uuid()) @db.Uuid
+  category_id String      @db.Uuid
+  name        String
+  slug        String      @unique
+  description String      @default("")
+  price       Int
+  stock       Int         @default(0)
+  images      String[]    @default([])
+  is_active   Boolean     @default(true)
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @updatedAt
+  category    Category    @relation(fields: [category_id], references: [id], onDelete: Restrict)
+  cart_items  CartItem[]
+  order_items OrderItem[]
+
+  @@index([category_id])
+  @@index([is_active, created_at])
+  @@map("products")
+}
+
+// Giỏ hàng: mỗi (user, product) chỉ có 1 dòng, tăng giảm bằng quantity
+model CartItem {
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String   @db.Uuid
+  product_id String   @db.Uuid
+  quantity   Int
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, product_id])
+  @@map("cart_items")
+}
+
+model Order {
+  id               String      @id @default(uuid()) @db.Uuid
+  user_id          String      @db.Uuid
+  status           OrderStatus @default(Pending)
+  total_amount     Int
+  shipping_name    String
+  shipping_phone   String
+  shipping_address String
+  note             String      @default("")
+  created_at       DateTime    @default(now())
+  updated_at       DateTime    @updatedAt
+  user             User        @relation(fields: [user_id], references: [id], onDelete: Restrict)
+  items            OrderItem[]
+
+  @@index([user_id, created_at])
+  @@index([status])
+  @@map("orders")
+}
+
+// Lưu "ảnh chụp" tên/giá/ảnh tại thời điểm mua để đơn cũ không đổi khi sản phẩm bị sửa hoặc xoá
+model OrderItem {
+  id            String   @id @default(uuid()) @db.Uuid
+  order_id      String   @db.Uuid
+  product_id    String?  @db.Uuid
+  product_name  String
+  product_image String   @default("")
+  unit_price    Int
+  quantity      Int
+  order         Order    @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  product       Product? @relation(fields: [product_id], references: [id], onDelete: SetNull)
+
+  @@index([order_id])
+  @@map("order_items")
 }

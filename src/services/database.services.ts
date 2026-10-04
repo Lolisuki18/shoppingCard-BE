@@ -35,9 +35,25 @@ class DatabaseService {
     return this.client.refreshToken
   }
 
-  //dùng khi cần nhiều thao tác phải thành công/thất bại cùng nhau
+  get categories() {
+    return this.client.category
+  }
+
+  get products() {
+    return this.client.product
+  }
+
+  get cartItems() {
+    return this.client.cartItem
+  }
+
+  get orders() {
+    return this.client.order
+  }
+
+  //dùng khi cần nhiều thao tác phải thành công/thất bại cùng nhau (throw trong callback sẽ rollback tất cả)
   get $transaction() {
-    return this.client.$transaction.bind(this.client)
+    return this.client.$transaction.bind(this.client) as PrismaClient['$transaction']
   }
 }
 

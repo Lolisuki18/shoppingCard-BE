@@ -89,3 +89,83 @@ export const USERS_MESSAGES = {
 export const MEDIAS_MESSAGES = {
   IMAGE_IS_EMPTY: 'Image is empty'
 } as const
+
+export const AUTH_MESSAGES = {
+  ACCOUNT_IS_BANNED: 'Account has been banned',
+  PERMISSION_DENIED: 'You do not have permission to perform this action',
+  EMAIL_MUST_BE_VERIFIED: 'Email must be verified to perform this action'
+} as const
+
+export const COMMON_MESSAGES = {
+  ID_IS_INVALID: 'Id must be a valid UUID',
+  PAGE_MUST_BE_A_POSITIVE_INTEGER: 'Page must be a positive integer',
+  LIMIT_MUST_BE_FROM_1_TO_100: 'Limit must be an integer from 1 to 100'
+} as const
+
+export const CATEGORY_MESSAGES = {
+  NAME_IS_REQUIRED: 'Category name is required',
+  NAME_LENGTH_MUST_BE_FROM_1_TO_100: 'Category name length must be from 1 to 100',
+  DESCRIPTION_MUST_BE_A_STRING: 'Category description must be a string',
+  DESCRIPTION_LENGTH_MUST_BE_LESS_THAN_500: 'Category description length must be less than 500',
+  NAME_ALREADY_EXISTS: 'Category name already exists',
+  NOT_FOUND: 'Category not found',
+  HAS_PRODUCTS: 'Category still has products, move or delete them first',
+  GET_SUCCESS: 'Get category success',
+  GET_LIST_SUCCESS: 'Get categories success',
+  CREATE_SUCCESS: 'Create category success',
+  UPDATE_SUCCESS: 'Update category success',
+  DELETE_SUCCESS: 'Delete category success'
+} as const
+
+export const PRODUCT_MESSAGES = {
+  NAME_IS_REQUIRED: 'Product name is required',
+  NAME_LENGTH_MUST_BE_FROM_1_TO_200: 'Product name length must be from 1 to 200',
+  DESCRIPTION_MUST_BE_A_STRING: 'Product description must be a string',
+  DESCRIPTION_LENGTH_MUST_BE_LESS_THAN_5000: 'Product description length must be less than 5000',
+  PRICE_MUST_BE_A_NON_NEGATIVE_INTEGER: 'Price must be a non-negative integer',
+  STOCK_MUST_BE_A_NON_NEGATIVE_INTEGER: 'Stock must be a non-negative integer',
+  IMAGES_MUST_BE_AN_ARRAY_OF_URLS: 'Images must be an array of at most 10 urls (each at most 400 characters)',
+  IS_ACTIVE_MUST_BE_A_BOOLEAN: 'is_active must be a boolean',
+  CATEGORY_ID_IS_REQUIRED: 'Category id is required',
+  MIN_PRICE_MUST_BE_A_NON_NEGATIVE_INTEGER: 'min_price must be a non-negative integer',
+  MAX_PRICE_MUST_BE_A_NON_NEGATIVE_INTEGER: 'max_price must be a non-negative integer',
+  SORT_IS_INVALID: 'sort must be one of: newest, price_asc, price_desc, name',
+  NOT_FOUND: 'Product not found',
+  GET_SUCCESS: 'Get product success',
+  GET_LIST_SUCCESS: 'Get products success',
+  CREATE_SUCCESS: 'Create product success',
+  UPDATE_SUCCESS: 'Update product success',
+  DELETE_SUCCESS: 'Delete product success'
+} as const
+
+export const CART_MESSAGES = {
+  PRODUCT_ID_IS_INVALID: 'product_id must be a valid UUID',
+  QUANTITY_MUST_BE_FROM_1_TO_999: 'Quantity must be an integer from 1 to 999',
+  PRODUCT_NOT_AVAILABLE: 'Product is not available',
+  NOT_ENOUGH_STOCK: 'Not enough stock for this quantity',
+  ITEM_NOT_FOUND: 'Item is not in your cart',
+  GET_SUCCESS: 'Get cart success',
+  ADD_SUCCESS: 'Add to cart success',
+  UPDATE_SUCCESS: 'Update cart item success',
+  REMOVE_SUCCESS: 'Remove cart item success',
+  CLEAR_SUCCESS: 'Clear cart success'
+} as const
+
+export const ORDER_MESSAGES = {
+  SHIPPING_NAME_IS_REQUIRED: 'Shipping name is required (1 - 100 characters)',
+  SHIPPING_PHONE_IS_INVALID: 'Shipping phone is invalid',
+  SHIPPING_ADDRESS_IS_REQUIRED: 'Shipping address is required (1 - 300 characters)',
+  NOTE_LENGTH_MUST_BE_LESS_THAN_500: 'Note must be a string shorter than 500 characters',
+  STATUS_IS_INVALID: 'Status must be one of: Pending, Confirmed, Shipping, Delivered, Cancelled',
+  CART_IS_EMPTY: 'Your cart is empty',
+  PRODUCT_UNAVAILABLE: 'A product in your cart is no longer available',
+  NOT_ENOUGH_STOCK: 'Not enough stock for a product in your cart',
+  NOT_FOUND: 'Order not found',
+  CANNOT_CANCEL: 'Only Pending orders can be cancelled by the customer',
+  INVALID_STATUS_TRANSITION: 'This status change is not allowed',
+  CREATE_SUCCESS: 'Create order success',
+  GET_SUCCESS: 'Get order success',
+  GET_LIST_SUCCESS: 'Get orders success',
+  CANCEL_SUCCESS: 'Cancel order success',
+  UPDATE_STATUS_SUCCESS: 'Update order status success'
+} as const

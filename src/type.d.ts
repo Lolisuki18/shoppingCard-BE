@@ -8,5 +8,7 @@ declare module 'express' {
     decode_refresh_token?: TokenPayLoad
     decode_email_verify_token?: TokenPayLoad
     decode_forgot_password_token?: TokenPayLoad
+    //người dùng hiện tại (lấy từ database nên role/verify luôn mới nhất), do auth.middlewares gắn vào
+    current_user?: { id: string; role: number; verify: number }
   }
 }
