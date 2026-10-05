@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 //npm i dotenv : dùng để tải thư viện để xài .env
 import dotenv from 'dotenv'
+import { logger } from '~/utils/logger'
 dotenv.config() //kích hoạt liên kết env
 
 class DatabaseService {
@@ -15,9 +16,9 @@ class DatabaseService {
       // $connect là optional (Prisma tự connect khi query đầu tiên), nhưng gọi sớm để lỗi kết nối hiện ngay lúc bật server
       await this.client.$connect()
       await this.client.$queryRaw`SELECT 1`
-      console.log('Kết nối PostgreSQL thành công!')
+      logger.info('Kết nối PostgreSQL thành công!')
     } catch (err) {
-      console.log(err)
+      logger.error('Không kết nối được PostgreSQL', { error: err })
       throw err
     }
   }
@@ -43,6 +44,14 @@ class DatabaseService {
     return this.client.product
   }
 
+  get variants() {
+    return this.client.productVariant
+  }
+
+  get orderItems() {
+    return this.client.orderItem
+  }
+
   get cartItems() {
     return this.client.cartItem
   }
@@ -51,13 +60,34 @@ class DatabaseService {
     return this.client.order
   }
 
+  get addresses() {
+    return this.client.address
+  }
+
+  get reviews() {
+    return this.client.review
+  }
+
+  get wishlistItems() {
+    return this.client.wishlistItem
+  }
+
+  get coupons() {
+    return this.client.coupon
+  }
+
+  //câu lệnh SQL thô cho những báo cáo mà Prisma không diễn đạt được (luôn dùng dạng template để giá trị được tham số hoá)
+  get $queryRaw() {
+    return this.client.$queryRaw.bind(this.client) as PrismaClient['$queryRaw']
+  }
+
   //dùng khi cần nhiều thao tác phải thành công/thất bại cùng nhau (throw trong callback sẽ rollback tất cả)
   get $transaction() {
     return this.client.$transaction.bind(this.client) as PrismaClient['$transaction']
   }
 }
 
-let databaseService = new DatabaseService()
+const databaseService = new DatabaseService()
 export default databaseService
 //tất cả những thằng ở services nên là class
 

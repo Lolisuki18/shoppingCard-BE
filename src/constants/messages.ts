@@ -97,6 +97,11 @@ export const AUTH_MESSAGES = {
 } as const
 
 export const COMMON_MESSAGES = {
+  TOO_MANY_REQUESTS: 'Too many requests, please try again later',
+  INTERNAL_SERVER_ERROR: 'Internal server error',
+  INVALID_JSON: 'Request body is not valid JSON',
+  PAYLOAD_TOO_LARGE: 'Request body is too large',
+  ROUTE_NOT_FOUND: 'Route not found',
   ID_IS_INVALID: 'Id must be a valid UUID',
   PAGE_MUST_BE_A_POSITIVE_INTEGER: 'Page must be a positive integer',
   LIMIT_MUST_BE_FROM_1_TO_100: 'Limit must be an integer from 1 to 100'
@@ -129,7 +134,9 @@ export const PRODUCT_MESSAGES = {
   CATEGORY_ID_IS_REQUIRED: 'Category id is required',
   MIN_PRICE_MUST_BE_A_NON_NEGATIVE_INTEGER: 'min_price must be a non-negative integer',
   MAX_PRICE_MUST_BE_A_NON_NEGATIVE_INTEGER: 'max_price must be a non-negative integer',
-  SORT_IS_INVALID: 'sort must be one of: newest, price_asc, price_desc, name',
+  SORT_IS_INVALID: 'sort must be one of: newest, price_asc, price_desc, name, rating',
+  PRICE_IS_REQUIRED: 'Price is required when the product has no variants',
+  VARIANTS_MUST_BE_A_LIST: 'variants must be a list of 1 - 50 variants',
   NOT_FOUND: 'Product not found',
   GET_SUCCESS: 'Get product success',
   GET_LIST_SUCCESS: 'Get products success',
@@ -144,10 +151,13 @@ export const CART_MESSAGES = {
   PRODUCT_NOT_AVAILABLE: 'Product is not available',
   NOT_ENOUGH_STOCK: 'Not enough stock for this quantity',
   ITEM_NOT_FOUND: 'Item is not in your cart',
+  VARIANT_REQUIRED: 'This product has several variants, variant_id is required',
   GET_SUCCESS: 'Get cart success',
   ADD_SUCCESS: 'Add to cart success',
   UPDATE_SUCCESS: 'Update cart item success',
   REMOVE_SUCCESS: 'Remove cart item success',
+  ITEMS_MUST_BE_A_LIST: 'items must be a list of 1 - 50 cart lines',
+  MERGE_SUCCESS: 'Merge cart success',
   CLEAR_SUCCESS: 'Clear cart success'
 } as const
 
@@ -163,9 +173,125 @@ export const ORDER_MESSAGES = {
   NOT_FOUND: 'Order not found',
   CANNOT_CANCEL: 'Only Pending orders can be cancelled by the customer',
   INVALID_STATUS_TRANSITION: 'This status change is not allowed',
+  TRACKING_ONLY_WITH_SHIPPING: 'carrier and tracking_code can only be sent when changing status to Shipping',
+  TRACKING_ONLY_WHEN_SHIPPING: 'Tracking can only be edited while the order is Shipping',
+  NOTE_IS_INVALID: 'note / reason must be a string shorter than 500 characters',
+  CARRIER_IS_INVALID: 'carrier must be a string shorter than 100 characters',
+  TRACKING_CODE_IS_INVALID: 'tracking_code must be a string shorter than 100 characters',
+  UPDATE_TRACKING_SUCCESS: 'Update tracking success',
   CREATE_SUCCESS: 'Create order success',
   GET_SUCCESS: 'Get order success',
   GET_LIST_SUCCESS: 'Get orders success',
   CANCEL_SUCCESS: 'Cancel order success',
   UPDATE_STATUS_SUCCESS: 'Update order status success'
+} as const
+
+export const COUPON_MESSAGES = {
+  CODE_IS_INVALID: 'Coupon code must be 3 - 32 characters (letters, numbers, - or _)',
+  DESCRIPTION_LENGTH_MUST_BE_LESS_THAN_500: 'Coupon description must be a string shorter than 500 characters',
+  DISCOUNT_TYPE_IS_INVALID: 'discount_type must be one of: Percent, Fixed',
+  DISCOUNT_VALUE_MUST_BE_A_POSITIVE_INTEGER: 'discount_value must be a positive integer',
+  PERCENT_MUST_BE_FROM_1_TO_100: 'A Percent coupon must have discount_value from 1 to 100',
+  MIN_ORDER_AMOUNT_MUST_BE_A_NON_NEGATIVE_INTEGER: 'min_order_amount must be a non-negative integer',
+  MAX_DISCOUNT_AMOUNT_MUST_BE_A_POSITIVE_INTEGER: 'max_discount_amount must be a positive integer or null',
+  USAGE_LIMIT_MUST_BE_A_POSITIVE_INTEGER: 'usage_limit must be a positive integer or null',
+  PER_USER_LIMIT_MUST_BE_A_POSITIVE_INTEGER: 'per_user_limit must be a positive integer or null',
+  DATE_IS_INVALID: 'starts_at / expires_at must be an ISO 8601 date or null',
+  EXPIRES_MUST_BE_AFTER_STARTS: 'expires_at must be after starts_at',
+  IS_ACTIVE_MUST_BE_A_BOOLEAN: 'is_active must be a boolean',
+  CODE_ALREADY_EXISTS: 'Coupon code already exists',
+  NOT_FOUND: 'Coupon not found',
+  NOT_ACTIVE: 'This coupon is not active',
+  NOT_STARTED: 'This coupon is not valid yet',
+  EXPIRED: 'This coupon has expired',
+  USAGE_LIMIT_REACHED: 'This coupon has been fully redeemed',
+  PER_USER_LIMIT_REACHED: 'You have already used this coupon the maximum number of times',
+  MIN_ORDER_NOT_REACHED: 'Your order does not reach the minimum amount for this coupon',
+  CART_IS_EMPTY: 'Your cart is empty',
+  VALIDATE_SUCCESS: 'Coupon can be applied',
+  GET_SUCCESS: 'Get coupon success',
+  GET_LIST_SUCCESS: 'Get coupons success',
+  CREATE_SUCCESS: 'Create coupon success',
+  UPDATE_SUCCESS: 'Update coupon success',
+  DELETE_SUCCESS: 'Delete coupon success'
+} as const
+
+export const REVIEW_MESSAGES = {
+  RATING_MUST_BE_FROM_1_TO_5: 'Rating must be an integer from 1 to 5',
+  COMMENT_LENGTH_MUST_BE_LESS_THAN_2000: 'Comment must be a string shorter than 2000 characters',
+  MUST_PURCHASE_FIRST: 'You can only review products from a delivered order',
+  ALREADY_REVIEWED: 'You have already reviewed this product, edit your review instead',
+  NOT_FOUND: 'Review not found',
+  GET_LIST_SUCCESS: 'Get reviews success',
+  CREATE_SUCCESS: 'Create review success',
+  UPDATE_SUCCESS: 'Update review success',
+  DELETE_SUCCESS: 'Delete review success'
+} as const
+
+export const WISHLIST_MESSAGES = {
+  PRODUCT_ID_IS_INVALID: 'product_id must be a valid UUID',
+  PRODUCT_NOT_AVAILABLE: 'Product is not available',
+  ITEM_NOT_FOUND: 'Product is not in your wishlist',
+  GET_LIST_SUCCESS: 'Get wishlist success',
+  ADD_SUCCESS: 'Add to wishlist success',
+  REMOVE_SUCCESS: 'Remove from wishlist success'
+} as const
+
+export const STATS_MESSAGES = {
+  DATE_IS_INVALID: 'from / to must be ISO 8601 dates',
+  RANGE_IS_INVALID: 'from must be before to',
+  RANGE_TOO_LARGE: 'Range is too large for this group_by (max 366 days, or 60 months)',
+  GROUP_BY_IS_INVALID: 'group_by must be one of: day, month',
+  LIMIT_MUST_BE_FROM_1_TO_50: 'limit must be an integer from 1 to 50',
+  THRESHOLD_MUST_BE_A_NON_NEGATIVE_INTEGER: 'threshold must be a non-negative integer',
+  OVERVIEW_SUCCESS: 'Get overview success',
+  REVENUE_SUCCESS: 'Get revenue success',
+  TOP_PRODUCTS_SUCCESS: 'Get top products success',
+  LOW_STOCK_SUCCESS: 'Get low stock products success'
+} as const
+
+export const ADDRESS_MESSAGES = {
+  NAME_IS_REQUIRED: 'Recipient name is required (1 - 100 characters)',
+  PHONE_IS_INVALID: 'Phone is invalid',
+  ADDRESS_IS_REQUIRED: 'Address is required (1 - 300 characters)',
+  IS_DEFAULT_MUST_BE_A_BOOLEAN: 'is_default must be a boolean',
+  ID_IS_INVALID: 'address_id must be a valid UUID',
+  LIMIT_REACHED: 'You can save at most 10 addresses',
+  NOT_FOUND: 'Address not found',
+  GET_LIST_SUCCESS: 'Get addresses success',
+  CREATE_SUCCESS: 'Create address success',
+  UPDATE_SUCCESS: 'Update address success',
+  DELETE_SUCCESS: 'Delete address success'
+} as const
+
+export const VARIANT_MESSAGES = {
+  NAME_IS_REQUIRED: 'Variant name is required (1 - 100 characters)',
+  NAMES_MUST_BE_UNIQUE: 'Variant names must be unique within a product',
+  SKU_IS_INVALID: 'sku must be 1 - 64 characters or null',
+  PRICE_MUST_BE_A_NON_NEGATIVE_INTEGER: 'Variant price must be a non-negative integer',
+  STOCK_MUST_BE_A_NON_NEGATIVE_INTEGER: 'Variant stock must be a non-negative integer',
+  IS_ACTIVE_MUST_BE_A_BOOLEAN: 'Variant is_active must be a boolean',
+  ID_IS_INVALID: 'variant_id must be a valid UUID',
+  NOT_FOUND: 'Variant not found',
+  ALREADY_EXISTS: 'A variant with this name or SKU already exists',
+  HAS_VARIANTS: 'This product has variants: update price and stock on each variant (/products/:id/variants)',
+  MUST_KEEP_ONE: 'A product needs at least one variant',
+  CANNOT_RENAME_DEFAULT: 'The default variant of a product without options cannot be renamed',
+  CREATE_SUCCESS: 'Create variant success',
+  UPDATE_SUCCESS: 'Update variant success',
+  DELETE_SUCCESS: 'Delete variant success'
+} as const
+
+export const ADMIN_USER_MESSAGES = {
+  ROLE_IS_INVALID: 'role must be 0 (Admin), 1 (Staff) or 2 (User)',
+  VERIFY_IS_INVALID: 'verify must be 0 (Unverified), 1 (Verified) or 2 (Banned)',
+  NOT_FOUND: 'User not found',
+  CANNOT_CHANGE_SELF: 'You cannot ban yourself or change your own role',
+  NOT_BANNED: 'This user is not banned',
+  ALREADY_BANNED: 'This user is already banned',
+  GET_LIST_SUCCESS: 'Get users success',
+  GET_SUCCESS: 'Get user success',
+  BAN_SUCCESS: 'Ban user success',
+  UNBAN_SUCCESS: 'Unban user success',
+  UPDATE_ROLE_SUCCESS: 'Update user role success'
 } as const

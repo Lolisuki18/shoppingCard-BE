@@ -7,7 +7,9 @@ import { signToken } from '~/utils/jwt'
 import { TokenType, UserVerifyStatus } from '~/constants/enums'
 import { ErrorWithStatus } from '~/models/Errors'
 import HTTP_STATUS from '~/constants/httpStatus'
-import { USERS_MESSAGES } from '~/constants/messages'
+import { AUTH_MESSAGES, USERS_MESSAGES } from '~/constants/messages'
+import mailServices from './mail.services'
+import { logger } from '~/utils/logger'
 import dotenv from 'dotenv'
 dotenv.config()
 
@@ -120,10 +122,8 @@ class UsersServices {
     //sau khi tạo tài khoản và lưu lên database ta sẽ ký ac và rf token để đưa cho người dùng
     const tokens = await this.signAndSaveTokens(user_id)
 
-    //Ký thêm email_verify_token gửi vào email của người đăng ký
-    console.log(`Gửi mail link xác thực sau:
-          http://localhost:3000/users/verify-email/?email_verify_token=${email_verify_token}
-      `)
+    //gửi email_verify_token vào email của người đăng ký (không chờ: gửi lỗi cũng không làm đăng ký thất bại)
+    void mailServices.sendVerifyEmail(payload.email, payload.name, email_verify_token)
     return tokens
   }
   //hàm đăng nhập
@@ -131,7 +131,7 @@ class UsersServices {
     //bcrypt có salt ngẫu nhiên nên không thể tìm bằng hash được -> tìm theo email rồi so sánh password
     const user = await databaseService.users.findUnique({
       where: { email },
-      select: { id: true, password: true }
+      select: { id: true, password: true, verify: true }
     })
 
     if (!user || !(await comparePassword(password, user.password))) {
@@ -139,6 +139,10 @@ class UsersServices {
         status: HTTP_STATUS.UNPROCESSABLE_ENTITY, //422
         message: USERS_MESSAGES.EMAIL_OR_PASSWORD_IS_INCORRECT
       })
+    }
+    //tài khoản bị khoá không được đăng nhập (kiểm tra sau khi đúng mật khẩu để không lộ trạng thái tài khoản cho người lạ)
+    if (user.verify === UserVerifyStatus.Banned) {
+      throw new ErrorWithStatus({ status: HTTP_STATUS.FORBIDDEN, message: AUTH_MESSAGES.ACCOUNT_IS_BANNED })
     }
     //nếu có user thì tạo at và rf
     return this.signAndSaveTokens(user.id)
@@ -180,34 +184,34 @@ class UsersServices {
   //gửi lại link verifyEmail
   async resendEmailVerify(user_id: string) {
     const email_verify_token = await this.signEmailVerifyToken(user_id)
-    console.log(`Gửi mail link xác thực sau:
-      http://localhost:3000/users/verify-email/?email_verify_token=${email_verify_token}
-  `)
     //lưu vào lại database
-    await databaseService.users.update({
+    const user = await databaseService.users.update({
       where: { id: user_id },
-      data: { email_verify_token }
+      data: { email_verify_token },
+      select: { email: true, name: true }
     })
+    void mailServices.sendVerifyEmail(user.email, user.name, email_verify_token)
   }
   //forgot Password
   async forgotPassword(email: string) {
     //dùng email tìm user lấy id tạo forgot_password_token
-    const user = await databaseService.users.findUnique({ where: { email }, select: { id: true } })
+    const user = await databaseService.users.findUnique({ where: { email }, select: { id: true, name: true } })
+    //email không có trong hệ thống thì bỏ qua im lặng. Phần còn lại chạy nền (không await) để người ngoài
+    //không phân biệt được "có tài khoản" / "không có" qua thời gian phản hồi
     if (user) {
-      //ký forgot_password_token
-      const forgot_password_token = await this.signForgotPasswordToken(user.id)
-      //lưu vào database
-      await databaseService.users.update({
-        where: { id: user.id },
-        data: { forgot_password_token }
-      })
-      //gửi email cái link cho người dùng
-      //3000 : back
-      //8000: front
-      console.log(`Gửi mail link xác thực sau:
-        http://localhost:8000/reset-password/?forgot_password_token=${forgot_password_token}
-    `)
+      void this.issueResetToken(user.id, user.name, email).catch((error) =>
+        logger.error('không tạo/gửi được link đặt lại mật khẩu', { user_id: user.id, error })
+      )
     }
+  }
+
+  private async issueResetToken(user_id: string, name: string, email: string) {
+    //ký forgot_password_token
+    const forgot_password_token = await this.signForgotPasswordToken(user_id)
+    //lưu vào database
+    await databaseService.users.update({ where: { id: user_id }, data: { forgot_password_token } })
+    //gửi link đặt lại mật khẩu (trỏ về FE) cho người dùng
+    await mailServices.sendForgotPassword(email, name, forgot_password_token)
   }
   //reset password
   async resetPassword({ user_id, password }: { user_id: string; password: string }) {
@@ -311,6 +315,12 @@ class UsersServices {
     user_id: string
     refresh_token: string
   }) {
+    //tài khoản bị khoá thì không cấp token mới nữa
+    const account = await databaseService.users.findUnique({ where: { id: user_id }, select: { verify: true } })
+    if (account?.verify === UserVerifyStatus.Banned) {
+      await databaseService.refreshTokens.deleteMany({ where: { user_id } })
+      throw new ErrorWithStatus({ status: HTTP_STATUS.FORBIDDEN, message: AUTH_MESSAGES.ACCOUNT_IS_BANNED })
+    }
     // tạo 2 ac và rf(chưa tính đến vấn đề nó sẽ bị route timing)
     const [access_token, new_refresh_token] = await Promise.all([
       this.signAccessToken(user_id),
@@ -330,5 +340,5 @@ class UsersServices {
 }
 
 //chơi với database phải await async vì nó sẽ tốn thời gian
-let usersServices = new UsersServices()
+const usersServices = new UsersServices()
 export default usersServices

@@ -1,22 +1,31 @@
 import { Router } from 'express'
 import {
   createProductController,
+  createVariantController,
   deleteProductController,
+  deleteVariantController,
   getProductController,
   getProductsController,
-  updateProductController
+  updateProductController,
+  updateVariantController
 } from '~/controllers/products.controllers'
+import { createReviewController, getProductReviewsController } from '~/controllers/reviews.controllers'
 import { USER_ROLE } from '~/constants/enums'
-import { requireRoles } from '~/middlewares/auth.middlewares'
+import { requireRoles, requireVerifiedUser } from '~/middlewares/auth.middlewares'
 import { filterMiddleware } from '~/middlewares/common.middleware'
 import {
   createProductValidator,
+  createReviewValidator,
+  createVariantValidator,
   idParamValidator,
+  paginationValidator,
   productListValidator,
-  updateProductValidator
+  updateProductValidator,
+  updateVariantValidator,
+  variantParamValidator
 } from '~/middlewares/shop.middlewares'
 import { accessTokenValidation } from '~/middlewares/users.middlewares'
-import { ProductReqBody } from '~/models/requests/Shop.requests'
+import { CreateReviewReqBody, ProductReqBody, VariantReqBody } from '~/models/requests/Shop.requests'
 import { wrapAsync } from '~/utils/handlers'
 
 const productRouter = Router()
@@ -27,6 +36,7 @@ const PRODUCT_FIELDS: (keyof ProductReqBody)[] = [
   'description',
   'price',
   'stock',
+  'variants',
   'images',
   'is_active'
 ]
@@ -34,6 +44,18 @@ const PRODUCT_FIELDS: (keyof ProductReqBody)[] = [
 //public: tìm kiếm / lọc / phân trang, và xem chi tiết (chỉ sản phẩm đang bán)
 productRouter.get('/', productListValidator, wrapAsync(getProductsController))
 productRouter.get('/:id', idParamValidator, wrapAsync(getProductController))
+
+//đánh giá: ai cũng xem được; chỉ khách đã nhận hàng sản phẩm đó mới được viết
+productRouter.get('/:id/reviews', idParamValidator, paginationValidator, wrapAsync(getProductReviewsController))
+productRouter.post(
+  '/:id/reviews',
+  accessTokenValidation,
+  requireVerifiedUser,
+  idParamValidator,
+  filterMiddleware<CreateReviewReqBody>(['rating', 'comment']),
+  createReviewValidator,
+  wrapAsync(createReviewController)
+)
 
 //Admin + Staff
 const manage = [accessTokenValidation, requireRoles(USER_ROLE.Admin, USER_ROLE.Staff)]
@@ -52,6 +74,25 @@ productRouter.patch(
   updateProductValidator,
   wrapAsync(updateProductController)
 )
+//biến thể (size/màu...): Admin + Staff, riêng xoá biến thể cũng chỉ cần Admin/Staff vì không mất dữ liệu đơn hàng
+const VARIANT_FIELDS: (keyof VariantReqBody)[] = ['name', 'sku', 'price', 'stock', 'is_active']
+productRouter.post(
+  '/:id/variants',
+  ...manage,
+  idParamValidator,
+  filterMiddleware<VariantReqBody>(VARIANT_FIELDS),
+  createVariantValidator,
+  wrapAsync(createVariantController)
+)
+productRouter.patch(
+  '/:id/variants/:variant_id',
+  ...manage,
+  variantParamValidator,
+  filterMiddleware<VariantReqBody>(VARIANT_FIELDS),
+  updateVariantValidator,
+  wrapAsync(updateVariantController)
+)
+productRouter.delete('/:id/variants/:variant_id', ...manage, variantParamValidator, wrapAsync(deleteVariantController))
 //chỉ Admin được xoá
 productRouter.delete(
   '/:id',

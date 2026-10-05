@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: shoppingcard
+          POSTGRES_PASSWORD: shoppingcard
+          POSTGRES_DB: shoppingcard_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U shoppingcard -d shoppingcard_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      TEST_DATABASE_URL: postgresql://shoppingcard:shoppingcard@localhost:5432/shoppingcard_test?schema=public
+      SHADOW_DATABASE_URL: postgresql://shoppingcard:shoppingcard@localhost:5432/shadow?schema=public
+      PGPASSWORD: shoppingcard
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prettier
+        run: npx prettier --check .
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Type check and build
+        run: npm run build
+
+      # schema.prisma sửa mà quên tạo migration thì bước này fail
+      - name: Prisma schema matches migrations
+        run: |
+          psql -h localhost -U shoppingcard -d shoppingcard_test -c 'CREATE DATABASE shadow'
+          npx prisma migrate diff \
+            --from-migrations prisma/migrations \
+            --to-schema-datamodel prisma/schema.prisma \
+            --shadow-database-url "$SHADOW_DATABASE_URL" \
+            --exit-code
+
+      - name: Test
+        run: npm test

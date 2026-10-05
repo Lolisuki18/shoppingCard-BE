@@ -1,8 +1,14 @@
 import { Request, Response } from 'express'
 import { ParamsDictionary } from 'express-serve-static-core'
 import HTTP_STATUS from '~/constants/httpStatus'
-import { PRODUCT_MESSAGES } from '~/constants/messages'
-import { ProductListQuery, ProductReqBody, UpdateProductReqBody } from '~/models/requests/Shop.requests'
+import { PRODUCT_MESSAGES, VARIANT_MESSAGES } from '~/constants/messages'
+import {
+  ProductListQuery,
+  ProductReqBody,
+  UpdateProductReqBody,
+  UpdateVariantReqBody,
+  VariantReqBody
+} from '~/models/requests/Shop.requests'
 import productsServices from '~/services/products.services'
 
 //public: chỉ thấy sản phẩm đang bán
@@ -49,4 +55,23 @@ export const updateProductController = async (
 export const deleteProductController = async (req: Request<ParamsDictionary>, res: Response) => {
   await productsServices.delete(req.params.id)
   res.status(HTTP_STATUS.OK).json({ message: PRODUCT_MESSAGES.DELETE_SUCCESS })
+}
+
+//---------------- biến thể (Admin/Staff) ----------------
+export const createVariantController = async (req: Request<ParamsDictionary, any, VariantReqBody>, res: Response) => {
+  const result = await productsServices.addVariant(req.params.id, req.body)
+  res.status(HTTP_STATUS.CREATED).json({ message: VARIANT_MESSAGES.CREATE_SUCCESS, result })
+}
+
+export const updateVariantController = async (
+  req: Request<ParamsDictionary, any, UpdateVariantReqBody>,
+  res: Response
+) => {
+  const result = await productsServices.updateVariant(req.params.id, req.params.variant_id, req.body)
+  res.status(HTTP_STATUS.OK).json({ message: VARIANT_MESSAGES.UPDATE_SUCCESS, result })
+}
+
+export const deleteVariantController = async (req: Request<ParamsDictionary>, res: Response) => {
+  const result = await productsServices.deleteVariant(req.params.id, req.params.variant_id)
+  res.status(HTTP_STATUS.OK).json({ message: VARIANT_MESSAGES.DELETE_SUCCESS, result })
 }

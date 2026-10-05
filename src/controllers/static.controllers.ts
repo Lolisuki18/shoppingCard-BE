@@ -4,6 +4,16 @@ import { UPLOAD_IMAGE_DIR, UPLOAD_VIDEO_DIR } from '~/constants/dir'
 import HTTP_STATUS from '~/constants/httpStatus'
 import fs from 'fs'
 import mime from 'mime-types'
+//chỉ cho phép đọc file nằm TRỰC TIẾP trong thư mục upload: namefile như "..%2F..%2F.env" bị từ chối
+//(trả undefined nếu tên file không hợp lệ)
+const safeFilePath = (dir: string, namefile: string) => {
+  if (!namefile || namefile !== path.basename(namefile) || namefile.startsWith('.')) return undefined
+  const filePath = path.resolve(dir, namefile)
+  return path.dirname(filePath) === path.resolve(dir) ? filePath : undefined
+}
+
+const fileNotFound = (res: Response) => res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'File not found' })
+
 //image
 export const serveImageController = (
   req: Request, //
@@ -11,14 +21,11 @@ export const serveImageController = (
   next: NextFunction
 ) => {
   //người dùng gửi lên filename qua param
-  const { namefile } = req.params
+  const filePath = safeFilePath(UPLOAD_IMAGE_DIR, req.params.namefile)
+  if (!filePath) return void fileNotFound(res)
   //gửi cho người ta cái file trong upload dir này
-  res.sendFile(path.resolve(UPLOAD_IMAGE_DIR, namefile), (error) => {
-    if (error) {
-      res.status((error as any).status).json({
-        message: 'File not found'
-      })
-    }
+  res.sendFile(filePath, (error) => {
+    if (error) fileNotFound(res)
   })
 }
 
@@ -29,14 +36,11 @@ export const serveVideoController = (
   next: NextFunction
 ) => {
   //người dùng gửi lên filename qua param
-  const { namefile } = req.params
+  const filePath = safeFilePath(UPLOAD_VIDEO_DIR, req.params.namefile)
+  if (!filePath) return void fileNotFound(res)
   //gửi cho người ta cái file trong upload dir này
-  res.sendFile(path.resolve(UPLOAD_VIDEO_DIR, namefile), (error) => {
-    if (error) {
-      res.status((error as any).status).json({
-        message: 'File not found'
-      })
-    }
+  res.sendFile(filePath, (error) => {
+    if (error) fileNotFound(res)
   })
 }
 
@@ -46,11 +50,10 @@ export const serveVideoStreamController = async (
   res: Response,
   next: NextFunction
 ) => {
-  const { namefile } = req.params //lấy namefile từ param string
   const range = req.headers.range //lấy cái range trong headers
-  console.log(range)
 
-  const videoPath = path.resolve(UPLOAD_VIDEO_DIR, namefile) //đường dẫn tới file video
+  const videoPath = safeFilePath(UPLOAD_VIDEO_DIR, req.params.namefile) //đường dẫn tới file video
+  if (!videoPath || !fs.existsSync(videoPath)) return void fileNotFound(res)
   //nếu k có range thì báo lỗi, đòi liền
   if (!range) {
     res.status(HTTP_STATUS.BAD_REQUEST).send('Require range header')
@@ -64,7 +67,6 @@ export const serveVideoStreamController = async (
     //lấy giá trị byte bắt đầu từ header range (vd: bytes=8257536-29377173/29377174)
     //8257536 là cái cần lấy
     const start = Number(range.replace(/\D/g, '')) //lấy số đầu tiên từ còn lại thay bằng ''
-    console.log('start: ', start)
 
     //lấy giá trị byte kết thúc-tức là khúc cần load đến
     const end = Math.min(start + CHUNK_SIZE, videoSize - 1) //nếu (start + CHUNK_SIZE) > videoSize thì lấy videoSize

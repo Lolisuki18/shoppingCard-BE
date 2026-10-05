@@ -67,7 +67,7 @@ export const registerController = async (
   const isEmailExits = await usersServices.checkEmailExist(email)
   if (isEmailExits) {
     throw new ErrorWithStatus({
-      status: HTTP_STATUS.UNAUTHORIZED, //401
+      status: HTTP_STATUS.CONFLICT, //409 (trước đây trả 401 làm FE tưởng hết phiên đăng nhập)
       message: USERS_MESSAGES.EMAIL_ALREADY_EXISTS
     })
   }
@@ -184,20 +184,12 @@ export const forgotPasswordController = async (
   next: NextFunction
 ) => {
   const { email } = req.body
-  //dùng email để tìm user này là ai
-  const hashUser = await usersServices.checkEmailExist(email)
-  if (!hashUser) {
-    throw new ErrorWithStatus({
-      status: HTTP_STATUS.NOT_FOUND, //404
-      message: USERS_MESSAGES.USER_NOT_FOUND
-    })
-  } else {
-    //nếu có user từ email này thì mình tạo token và gửi link vào email cho nó
-    await usersServices.forgotPassword(email)
-    res.status(HTTP_STATUS.OK).json({
-      message: USERS_MESSAGES.CHECK_EMAIL_TO_RESET_PASSWORD
-    })
-  }
+  //luôn trả 200 dù email có tồn tại hay không: không để người lạ dò được email nào đã đăng ký.
+  //chỉ khi email có thật thì mới tạo token và gửi link (việc này chạy nền để thời gian phản hồi hai trường hợp như nhau)
+  await usersServices.forgotPassword(email)
+  res.status(HTTP_STATUS.OK).json({
+    message: USERS_MESSAGES.CHECK_EMAIL_TO_RESET_PASSWORD
+  })
 }
 
 //verify forgot password

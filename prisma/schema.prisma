@@ -30,6 +30,10 @@ model User {
   refresh_tokens        RefreshToken[]
   cart_items            CartItem[]
   orders                Order[]
+  reviews               Review[]
+  wishlist_items        WishlistItem[]
+
+  addresses Address[]
 
   @@map("users")
 }
@@ -43,6 +47,11 @@ model RefreshToken {
 
   @@index([user_id])
   @@map("refresh_tokens")
+}
+
+enum DiscountType {
+  Percent // giảm theo %, discount_value = 1..100
+  Fixed // giảm số tiền cố định (VND)
 }
 
 enum OrderStatus {
@@ -67,72 +76,199 @@ model Category {
 }
 
 model Product {
-  id          String      @id @default(uuid()) @db.Uuid
-  category_id String      @db.Uuid
-  name        String
-  slug        String      @unique
-  description String      @default("")
-  price       Int
-  stock       Int         @default(0)
-  images      String[]    @default([])
-  is_active   Boolean     @default(true)
-  created_at  DateTime    @default(now())
-  updated_at  DateTime    @updatedAt
-  category    Category    @relation(fields: [category_id], references: [id], onDelete: Restrict)
-  cart_items  CartItem[]
-  order_items OrderItem[]
+  id             String           @id @default(uuid()) @db.Uuid
+  category_id    String           @db.Uuid
+  name           String
+  slug           String           @unique
+  description    String           @default("")
+  price          Int // = giá thấp nhất trong các biến thể đang bán (tự cập nhật), dùng để lọc/sắp xếp
+  stock          Int              @default(0) // = tổng tồn kho các biến thể đang bán (tự cập nhật)
+  images         String[]         @default([])
+  is_active      Boolean          @default(true)
+  rating_avg     Float            @default(0) // điểm trung bình (0 nếu chưa có đánh giá), tính lại mỗi khi review đổi
+  rating_count   Int              @default(0)
+  created_at     DateTime         @default(now())
+  updated_at     DateTime         @updatedAt
+  category       Category         @relation(fields: [category_id], references: [id], onDelete: Restrict)
+  cart_items     CartItem[]
+  order_items    OrderItem[]
+  variants       ProductVariant[]
+  reviews        Review[]
+  wishlist_items WishlistItem[]
 
   @@index([category_id])
   @@index([is_active, created_at])
   @@map("products")
 }
 
-// Giỏ hàng: mỗi (user, product) chỉ có 1 dòng, tăng giảm bằng quantity
-model CartItem {
-  id         String   @id @default(uuid()) @db.Uuid
-  user_id    String   @db.Uuid
-  product_id String   @db.Uuid
-  quantity   Int
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  product    Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+// Biến thể (size/màu...): giá và tồn kho nằm ở đây. Sản phẩm không có tuỳ chọn có đúng 1 biến thể mặc định (name = "")
+model ProductVariant {
+  id          String      @id @default(uuid()) @db.Uuid
+  product_id  String      @db.Uuid
+  name        String      @default("") // vd "Đen / L"; "" = biến thể mặc định của sản phẩm không có tuỳ chọn
+  sku         String?     @unique
+  price       Int
+  stock       Int         @default(0)
+  is_active   Boolean     @default(true)
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @updatedAt
+  product     Product     @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  cart_items  CartItem[]
+  order_items OrderItem[]
 
-  @@unique([user_id, product_id])
+  @@unique([product_id, name])
+  @@map("product_variants")
+}
+
+// Giỏ hàng: mỗi (user, biến thể) chỉ có 1 dòng, tăng giảm bằng quantity
+model CartItem {
+  id         String         @id @default(uuid()) @db.Uuid
+  user_id    String         @db.Uuid
+  product_id String         @db.Uuid
+  variant_id String         @db.Uuid
+  quantity   Int
+  created_at DateTime       @default(now())
+  updated_at DateTime       @updatedAt
+  user       User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  product    Product        @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  variant    ProductVariant @relation(fields: [variant_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, variant_id])
+  @@index([user_id, product_id])
   @@map("cart_items")
 }
 
 model Order {
-  id               String      @id @default(uuid()) @db.Uuid
-  user_id          String      @db.Uuid
-  status           OrderStatus @default(Pending)
-  total_amount     Int
+  id               String               @id @default(uuid()) @db.Uuid
+  code             String               @unique // mã đơn dễ đọc để khách/CSKH tra cứu, vd DH261005-7K3M9
+  user_id          String               @db.Uuid
+  status           OrderStatus          @default(Pending)
+  total_amount     Int // số tiền khách phải trả = tổng tiền hàng - discount_amount + shipping_fee
+  coupon_id        String?              @db.Uuid
+  coupon_code      String               @default("") // bản chụp mã đã dùng (coupon bị xoá thì đơn vẫn giữ)
+  discount_amount  Int                  @default(0)
+  shipping_fee     Int                  @default(0)
   shipping_name    String
   shipping_phone   String
   shipping_address String
-  note             String      @default("")
-  created_at       DateTime    @default(now())
-  updated_at       DateTime    @updatedAt
-  user             User        @relation(fields: [user_id], references: [id], onDelete: Restrict)
+  note             String               @default("")
+  delivered_at     DateTime? // thời điểm giao thành công (doanh thu tính theo mốc này)
+  cancelled_at     DateTime?
+  cancel_reason    String               @default("")
+  carrier          String               @default("") // đơn vị vận chuyển
+  tracking_code    String               @default("") // mã vận đơn
+  created_at       DateTime             @default(now())
+  updated_at       DateTime             @updatedAt
+  user             User                 @relation(fields: [user_id], references: [id], onDelete: Restrict)
+  coupon           Coupon?              @relation(fields: [coupon_id], references: [id], onDelete: SetNull)
   items            OrderItem[]
+  history          OrderStatusHistory[]
 
   @@index([user_id, created_at])
+  @@index([coupon_id])
+  @@index([status, delivered_at])
   @@index([status])
   @@map("orders")
 }
 
 // Lưu "ảnh chụp" tên/giá/ảnh tại thời điểm mua để đơn cũ không đổi khi sản phẩm bị sửa hoặc xoá
 model OrderItem {
-  id            String   @id @default(uuid()) @db.Uuid
-  order_id      String   @db.Uuid
-  product_id    String?  @db.Uuid
+  id            String          @id @default(uuid()) @db.Uuid
+  order_id      String          @db.Uuid
+  product_id    String?         @db.Uuid
+  variant_id    String?         @db.Uuid
   product_name  String
-  product_image String   @default("")
+  variant_name  String          @default("") // bản chụp tên biến thể lúc mua
+  product_image String          @default("")
   unit_price    Int
   quantity      Int
-  order         Order    @relation(fields: [order_id], references: [id], onDelete: Cascade)
-  product       Product? @relation(fields: [product_id], references: [id], onDelete: SetNull)
+  order         Order           @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  product       Product?        @relation(fields: [product_id], references: [id], onDelete: SetNull)
+  variant       ProductVariant? @relation(fields: [variant_id], references: [id], onDelete: SetNull)
 
   @@index([order_id])
   @@map("order_items")
+}
+
+// Mã giảm giá. used_count tăng khi tạo đơn và giảm lại khi đơn bị huỷ
+model Coupon {
+  id                  String       @id @default(uuid()) @db.Uuid
+  code                String       @unique // luôn lưu IN HOA
+  description         String       @default("")
+  discount_type       DiscountType
+  discount_value      Int
+  min_order_amount    Int          @default(0) // đơn tối thiểu để được áp dụng
+  max_discount_amount Int? // trần giảm giá (chỉ có ý nghĩa với Percent)
+  usage_limit         Int? // tổng số lượt dùng, null = không giới hạn
+  per_user_limit      Int?         @default(1) // số lượt mỗi khách, null = không giới hạn
+  used_count          Int          @default(0)
+  starts_at           DateTime?
+  expires_at          DateTime?
+  is_active           Boolean      @default(true)
+  created_at          DateTime     @default(now())
+  updated_at          DateTime     @updatedAt
+  orders              Order[]
+
+  @@map("coupons")
+}
+
+// Mỗi khách đánh giá 1 sản phẩm tối đa 1 lần (và phải từng nhận hàng sản phẩm đó)
+model Review {
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String   @db.Uuid
+  product_id String   @db.Uuid
+  rating     Int // 1..5
+  comment    String   @default("")
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, product_id])
+  @@index([product_id, created_at])
+  @@map("reviews")
+}
+
+model WishlistItem {
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String   @db.Uuid
+  product_id String   @db.Uuid
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, product_id])
+  @@index([user_id, created_at])
+  @@map("wishlist_items")
+}
+
+// Sổ địa chỉ giao hàng. Mỗi user tối đa 10 địa chỉ, đúng 1 địa chỉ mặc định (nếu có địa chỉ)
+model Address {
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String   @db.Uuid
+  name       String // người nhận
+  phone      String
+  address    String
+  is_default Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("addresses")
+}
+
+// Nhật ký đổi trạng thái đơn. changed_by = người thực hiện (khách hoặc nhân viên), null = hệ thống (vd tự huỷ quá hạn)
+model OrderStatusHistory {
+  id          String       @id @default(uuid()) @db.Uuid
+  order_id    String       @db.Uuid
+  from_status OrderStatus? // null = lúc tạo đơn
+  to_status   OrderStatus
+  note        String       @default("")
+  changed_by  String?      @db.Uuid
+  created_at  DateTime     @default(now())
+  order       Order        @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  @@index([order_id, created_at])
+  @@map("order_status_history")
 }

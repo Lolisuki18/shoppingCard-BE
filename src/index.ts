@@ -1,40 +1,41 @@
-//dựng sever với express
-import express from 'express'
+//chạy server: kết nối database rồi mới mở cổng
 import dotenv from 'dotenv'
-import userRouter from './routes/users.routers'
+import app from './app'
 import databaseService from './services/database.services'
-import { defaultErrorHandler } from './middlewares/error.middleware'
-import mediaRouter from './routes/medias.routers'
+import { startOrderJobs } from './jobs/orders.jobs'
+import { startUploadJobs } from './jobs/uploads.jobs'
 import { initFolder } from './utils/file'
-import staticRouter from './routes/static.routers'
-import categoryRouter from './routes/categories.routers'
-import productRouter from './routes/products.routers'
-import cartRouter from './routes/carts.routers'
-import orderRouter from './routes/orders.routers'
-import adminRouter from './routes/admin.routers'
+import { logger } from './utils/logger'
 
 dotenv.config()
-const app = express()
 const PORT = Number(process.env.PORT) || 3000
 
-//kết nối PostgreSQL (qua Prisma)
-databaseService.connect()
-initFolder() // mỗi lần sever chạy thì nó sẽ tạo luôn thư mục upload cho mình luôn
-app.use(express.json()) // cho sever xài 1 middleware biến đổi json -> ko có cái này sẽ bị biến thành undefined
-//server dùng cái route đã tạo
-app.use('/users', userRouter)
-app.use('/medias', mediaRouter)
-app.use('/static', staticRouter)
-app.use('/categories', categoryRouter)
-app.use('/products', productRouter)
-app.use('/cart', cartRouter)
-app.use('/orders', orderRouter)
-app.use('/admin', adminRouter)
-//http://localhost:3000/users/login body{email, password}
+const bootstrap = async () => {
+  await databaseService.connect() //kết nối PostgreSQL (qua Prisma), lỗi thì dừng luôn thay vì chạy mà không có DB
+  initFolder() // mỗi lần sever chạy thì nó sẽ tạo luôn thư mục upload cho mình luôn
 
-app.use(defaultErrorHandler)
-//-> điểm tập kết lỗi của hệ thốnng -> điểm tập kết lỗi
+  const stopOrderJobs = startOrderJobs()
+  const stopUploadJobs = startUploadJobs()
+  const server = app.listen(PORT, () => {
+    logger.info(`SERVER BE đang chạy trên port : ${PORT}`)
+  })
 
-app.listen(PORT, () => {
-  console.log('SERVER BE đang chạy trên port : ' + PORT)
+  //tắt êm: ngừng nhận request mới, đợi request đang chạy xong rồi mới ngắt DB
+  const shutdown = (signal: string) => {
+    logger.info(`nhận ${signal}, đang tắt server`)
+    stopOrderJobs()
+    stopUploadJobs()
+    server.close(async () => {
+      await databaseService.disconnect()
+      process.exit(0)
+    })
+    setTimeout(() => process.exit(1), 10_000).unref() //quá 10s mà chưa đóng được thì ép tắt
+  }
+  process.on('SIGTERM', () => shutdown('SIGTERM'))
+  process.on('SIGINT', () => shutdown('SIGINT'))
+}
+
+bootstrap().catch((error) => {
+  logger.error('không khởi động được server', { error })
+  process.exit(1)
 })

@@ -38,7 +38,7 @@ export const handleUploadImage = async (req: Request) => {
     maxFileSize: 1024 * 300 * 4, //tối đa 4 hình không quá 300kb
     keepExtensions: true, // giữ lại đuôi file
     //xài option filter để kiểm tra file có phải là image không
-    filter: ({ name, originalFilename, mimetype }) => {
+    filter: ({ name, mimetype }) => {
       //name: name|key được truyền  vào trong <input name = 'blabla'>
       //originalFilename: tên file gốc// tên gốc của file
       //mimetype: kiểu file : kiểu file vd : image/png || là định dạng kiểu của file
@@ -113,7 +113,7 @@ export const handleUploadVideo = async (req: Request) => {
     maxFileSize: 1024 * 1024 * 50, // chất lượng HD nhưng chỉ 50mb
     keepExtensions: true, // giữ lại đuôi file
     //xài option filter để kiểm tra file có phải là image không
-    filter: ({ name, originalFilename, mimetype }) => {
+    filter: ({ name, mimetype }) => {
       //name: name|key được truyền  vào trong <input name = 'blabla'>
       //originalFilename: tên file gốc// tên gốc của file
       //mimetype: kiểu file : kiểu file vd : image/png || là định dạng kiểu của file
