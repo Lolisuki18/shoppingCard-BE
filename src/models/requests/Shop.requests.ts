@@ -70,9 +70,20 @@ export interface CreateOrderReqBody {
 }
 export interface UpdateOrderStatusReqBody {
   status: OrderStatus
+  note?: string //ghi chú; khi huỷ thì là lý do huỷ
+  carrier?: string //đơn vị vận chuyển (chỉ khi chuyển sang Shipping)
+  tracking_code?: string //mã vận đơn (chỉ khi chuyển sang Shipping)
+}
+export interface UpdateTrackingReqBody {
+  carrier?: string
+  tracking_code?: string
+}
+export interface CancelOrderReqBody {
+  reason?: string
 }
 export interface OrderListQuery extends PaginationQuery {
   status?: OrderStatus | string
+  search?: string //mã đơn (Admin/Staff: thêm tên, số điện thoại người nhận)
 }
 
 //coupon

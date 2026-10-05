@@ -23,7 +23,8 @@ import {
 import {
   adminGetOrderController,
   adminGetOrdersController,
-  adminUpdateOrderStatusController
+  adminUpdateOrderStatusController,
+  adminUpdateTrackingController
 } from '~/controllers/orders.controllers'
 import { adminGetProductController, adminGetProductsController } from '~/controllers/products.controllers'
 import { requireRoles } from '~/middlewares/auth.middlewares'
@@ -41,10 +42,16 @@ import {
   topProductsValidator,
   updateCouponValidator,
   updateOrderStatusValidator,
+  updateTrackingValidator,
   updateUserRoleValidator
 } from '~/middlewares/shop.middlewares'
 import { accessTokenValidation } from '~/middlewares/users.middlewares'
-import { CouponReqBody, UpdateOrderStatusReqBody, UpdateUserRoleReqBody } from '~/models/requests/Shop.requests'
+import {
+  CouponReqBody,
+  UpdateOrderStatusReqBody,
+  UpdateTrackingReqBody,
+  UpdateUserRoleReqBody
+} from '~/models/requests/Shop.requests'
 import { wrapAsync } from '~/utils/handlers'
 
 //khu vực quản trị: chỉ Admin + Staff
@@ -61,9 +68,17 @@ adminRouter.get('/orders/:id', idParamValidator, wrapAsync(adminGetOrderControll
 adminRouter.patch(
   '/orders/:id/status',
   idParamValidator,
-  filterMiddleware<UpdateOrderStatusReqBody>(['status']),
+  filterMiddleware<UpdateOrderStatusReqBody>(['status', 'note', 'carrier', 'tracking_code']),
   updateOrderStatusValidator,
   wrapAsync(adminUpdateOrderStatusController)
+)
+
+adminRouter.patch(
+  '/orders/:id/tracking',
+  idParamValidator,
+  filterMiddleware<UpdateTrackingReqBody>(['carrier', 'tracking_code']),
+  updateTrackingValidator,
+  wrapAsync(adminUpdateTrackingController)
 )
 
 //mã giảm giá: Admin + Staff tạo/sửa, chỉ Admin được xoá

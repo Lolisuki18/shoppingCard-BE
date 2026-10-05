@@ -3,7 +3,13 @@ import databaseService from './database.services'
 import HTTP_STATUS from '~/constants/httpStatus'
 import { ADDRESS_MESSAGES, ORDER_MESSAGES } from '~/constants/messages'
 import { ErrorWithStatus } from '~/models/Errors'
-import { CreateOrderReqBody, OrderListQuery } from '~/models/requests/Shop.requests'
+import {
+  CreateOrderReqBody,
+  OrderListQuery,
+  UpdateOrderStatusReqBody,
+  UpdateTrackingReqBody
+} from '~/models/requests/Shop.requests'
+import { generateOrderCode } from '~/utils/orderCode'
 import { buildPage, getPagination } from '~/utils/pagination'
 import { syncProductAggregates } from '~/utils/productAggregates'
 import { calculateShippingFee } from '~/utils/shipping'
@@ -24,16 +30,44 @@ const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   Cancelled: []
 }
 
-const orderInclude = { items: { orderBy: { product_name: 'asc' } } } satisfies Prisma.OrderInclude
+//khách thấy dòng thời gian trạng thái (không có người thực hiện); Admin/Staff thấy thêm changed_by và thông tin khách
+const customerInclude = {
+  items: { orderBy: { product_name: 'asc' } },
+  history: {
+    orderBy: [{ created_at: 'asc' }, { id: 'asc' }],
+    select: { from_status: true, to_status: true, note: true, created_at: true }
+  }
+} satisfies Prisma.OrderInclude
+const adminInclude = {
+  items: { orderBy: { product_name: 'asc' } },
+  history: { orderBy: [{ created_at: 'asc' }, { id: 'asc' }] },
+  user: { select: { id: true, name: true, email: true } }
+} satisfies Prisma.OrderInclude
+const includeFor = (admin: boolean) => (admin ? adminInclude : customerInclude)
+
+//ghi 1 dòng vào nhật ký đổi trạng thái (changed_by null = hệ thống)
+const recordHistory = (
+  tx: Tx,
+  order_id: string,
+  from_status: OrderStatus | null,
+  to_status: OrderStatus,
+  { by, note }: { by: string | null; note?: string }
+) => tx.orderStatusHistory.create({ data: { order_id, from_status, to_status, note: note ?? '', changed_by: by } })
 
 //đổi trạng thái đơn sang Cancelled, trả hàng về kho và trả lại lượt dùng coupon (chạy trong transaction)
 //updateMany kèm điều kiện status hiện tại để 2 request huỷ cùng lúc không trả kho 2 lần
-const cancelAndRestock = async (tx: Tx, order_id: string, fromStatus: OrderStatus) => {
+const cancelAndRestock = async (
+  tx: Tx,
+  order_id: string,
+  fromStatus: OrderStatus,
+  { by, reason }: { by: string | null; reason?: string }
+) => {
   const { count } = await tx.order.updateMany({
     where: { id: order_id, status: fromStatus },
-    data: { status: 'Cancelled' }
+    data: { status: 'Cancelled', cancelled_at: new Date(), cancel_reason: reason ?? '' }
   })
   if (count === 0) throw conflict(ORDER_MESSAGES.INVALID_STATUS_TRANSITION)
+  await recordHistory(tx, order_id, fromStatus, 'Cancelled', { by, note: reason })
   const cancelled = await tx.order.findUnique({ where: { id: order_id }, select: { coupon_id: true } })
   if (cancelled?.coupon_id) await couponsServices.release(tx, cancelled.coupon_id)
   const items = await tx.orderItem.findMany({ where: { order_id }, orderBy: { variant_id: 'asc' } })
@@ -95,6 +129,7 @@ class OrdersServices {
 
       const order = await tx.order.create({
         data: {
+          code: await this.uniqueCode(tx),
           user_id,
           total_amount: goodsAmount + shippingFee,
           shipping_fee: shippingFee,
@@ -105,6 +140,7 @@ class OrdersServices {
           shipping_phone: shipping.phone,
           shipping_address: shipping.address,
           note: body.note ?? '',
+          history: { create: { from_status: null, to_status: 'Pending', changed_by: user_id } },
           items: {
             create: cartItems.map((item) => ({
               product_id: item.product_id,
@@ -117,11 +153,20 @@ class OrdersServices {
             }))
           }
         },
-        include: orderInclude
+        include: customerInclude
       })
       await tx.cartItem.deleteMany({ where: { user_id } })
       return order
     })
+  }
+
+  //mã đơn chưa ai dùng (cột code có unique làm chốt chặn cuối nếu 2 đơn trùng mã cùng lúc)
+  private async uniqueCode(tx: Tx) {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const code = generateOrderCode()
+      if (!(await tx.order.findUnique({ where: { code }, select: { id: true } }))) return code
+    }
+    return generateOrderCode()
   }
 
   //thông tin giao hàng: lấy từ sổ địa chỉ (address_id) hoặc từ 3 trường shipping_* khách nhập (validator đã bắt buộc có 1 trong 2)
@@ -140,10 +185,23 @@ class OrdersServices {
 
   //user_id có giá trị: chỉ lấy đơn của user đó (khách hàng). Bỏ trống: lấy tất cả (Admin/Staff)
   async getList(query: OrderListQuery, user_id?: string) {
+    const admin = user_id === undefined
     const { page, limit, skip, take } = getPagination(query)
     const where: Prisma.OrderWhereInput = {
       ...(user_id && { user_id }),
-      ...(query.status && { status: query.status as OrderStatus })
+      ...(query.status && { status: query.status as OrderStatus }),
+      //tìm theo mã đơn; Admin/Staff tìm được thêm theo tên / số điện thoại người nhận
+      ...(query.search && {
+        OR: [
+          { code: { contains: query.search, mode: 'insensitive' } },
+          ...(admin
+            ? [
+                { shipping_name: { contains: query.search, mode: 'insensitive' as const } },
+                { shipping_phone: { contains: query.search } }
+              ]
+            : [])
+        ]
+      })
     }
     const [items, total] = await Promise.all([
       databaseService.orders.findMany({
@@ -151,7 +209,7 @@ class OrdersServices {
         orderBy: [{ created_at: 'desc' }, { id: 'asc' }],
         skip,
         take,
-        include: orderInclude
+        include: includeFor(admin)
       }),
       databaseService.orders.count({ where })
     ])
@@ -162,19 +220,19 @@ class OrdersServices {
   async getById(id: string, user_id?: string) {
     const order = await databaseService.orders.findFirst({
       where: { id, ...(user_id && { user_id }) },
-      include: orderInclude
+      include: includeFor(user_id === undefined)
     })
     if (!order) throw orderNotFound()
     return order
   }
 
   //khách tự huỷ: chỉ khi đơn còn Pending
-  async cancelByCustomer(id: string, user_id: string) {
+  async cancelByCustomer(id: string, user_id: string, reason?: string) {
     await databaseService.$transaction(async (tx) => {
       const order = await tx.order.findFirst({ where: { id, user_id }, select: { status: true } })
       if (!order) throw orderNotFound()
       if (order.status !== 'Pending') throw conflict(ORDER_MESSAGES.CANNOT_CANCEL)
-      await cancelAndRestock(tx, id, 'Pending')
+      await cancelAndRestock(tx, id, 'Pending', { by: user_id, reason })
     })
     void mailServices.sendOrderMail(id, 'status')
     return this.getById(id, user_id)
@@ -196,7 +254,12 @@ class OrdersServices {
       let cancelledInBatch = 0
       for (const { id } of expired) {
         try {
-          await databaseService.$transaction((tx) => cancelAndRestock(tx, id, 'Pending'))
+          await databaseService.$transaction((tx) =>
+            cancelAndRestock(tx, id, 'Pending', {
+              by: null,
+              reason: `Tự huỷ do quá ${olderThanHours} giờ chưa được xác nhận`
+            })
+          )
           cancelledInBatch++
           void mailServices.sendOrderMail(id, 'status')
         } catch (error) {
@@ -209,8 +272,16 @@ class OrdersServices {
     }
   }
 
-  //Admin/Staff đổi trạng thái theo bảng ALLOWED_TRANSITIONS
-  async updateStatus(id: string, status: OrderStatus) {
+  //Admin/Staff đổi trạng thái theo bảng ALLOWED_TRANSITIONS. note = ghi chú (với Cancelled là lý do huỷ);
+  //carrier + tracking_code chỉ đi kèm khi chuyển sang Shipping
+  async updateStatus(id: string, body: UpdateOrderStatusReqBody, actor_id: string) {
+    const { status, note, carrier, tracking_code } = body
+    if ((carrier !== undefined || tracking_code !== undefined) && status !== 'Shipping') {
+      throw new ErrorWithStatus({
+        status: HTTP_STATUS.UNPROCESSABLE_ENTITY,
+        message: ORDER_MESSAGES.TRACKING_ONLY_WITH_SHIPPING
+      })
+    }
     await databaseService.$transaction(async (tx) => {
       const order = await tx.order.findUnique({ where: { id }, select: { status: true } })
       if (!order) throw orderNotFound()
@@ -218,13 +289,36 @@ class OrdersServices {
         throw conflict(ORDER_MESSAGES.INVALID_STATUS_TRANSITION)
       }
       if (status === 'Cancelled') {
-        await cancelAndRestock(tx, id, order.status)
-      } else {
-        const { count } = await tx.order.updateMany({ where: { id, status: order.status }, data: { status } })
-        if (count === 0) throw conflict(ORDER_MESSAGES.INVALID_STATUS_TRANSITION)
+        await cancelAndRestock(tx, id, order.status, { by: actor_id, reason: note })
+        return
       }
+      const { count } = await tx.order.updateMany({
+        where: { id, status: order.status },
+        data: {
+          status,
+          ...(status === 'Delivered' && { delivered_at: new Date() }),
+          ...(carrier !== undefined && { carrier }),
+          ...(tracking_code !== undefined && { tracking_code })
+        }
+      })
+      if (count === 0) throw conflict(ORDER_MESSAGES.INVALID_STATUS_TRANSITION)
+      await recordHistory(tx, id, order.status, status, { by: actor_id, note })
     })
     void mailServices.sendOrderMail(id, 'status')
+    return this.getById(id)
+  }
+
+  //sửa đơn vị vận chuyển / mã vận đơn của đơn đang giao (vd nhập nhầm mã)
+  async updateTracking(id: string, { carrier, tracking_code }: UpdateTrackingReqBody) {
+    const { count } = await databaseService.orders.updateMany({
+      where: { id, status: 'Shipping' },
+      data: { ...(carrier !== undefined && { carrier }), ...(tracking_code !== undefined && { tracking_code }) }
+    })
+    if (count === 0) {
+      //không tìm thấy hoặc không còn ở trạng thái Shipping
+      await this.getById(id)
+      throw conflict(ORDER_MESSAGES.TRACKING_ONLY_WHEN_SHIPPING)
+    }
     return this.getById(id)
   }
 }

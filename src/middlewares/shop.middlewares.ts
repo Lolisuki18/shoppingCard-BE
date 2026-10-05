@@ -430,14 +430,34 @@ export const createOrderValidator = validate(
 )
 
 const statusValues = Object.values(OrderStatus)
+const shortText = (max: number, errorMessage: string): ParamSchema => ({
+  optional: true,
+  isString: { errorMessage },
+  trim: true,
+  isLength: { options: { max }, errorMessage }
+})
+const trackingFields = {
+  carrier: shortText(100, ORDER_MESSAGES.CARRIER_IS_INVALID),
+  tracking_code: shortText(100, ORDER_MESSAGES.TRACKING_CODE_IS_INVALID)
+}
 export const updateOrderStatusValidator = validate(
-  checkSchema({ status: { isIn: { options: [statusValues], errorMessage: ORDER_MESSAGES.STATUS_IS_INVALID } } }, [
-    'body'
-  ])
+  checkSchema(
+    {
+      status: { isIn: { options: [statusValues], errorMessage: ORDER_MESSAGES.STATUS_IS_INVALID } },
+      note: shortText(500, ORDER_MESSAGES.NOTE_IS_INVALID),
+      ...trackingFields
+    },
+    ['body']
+  )
+)
+export const updateTrackingValidator = validate(checkSchema(trackingFields, ['body']))
+export const cancelOrderValidator = validate(
+  checkSchema({ reason: shortText(500, ORDER_MESSAGES.NOTE_IS_INVALID) }, ['body'])
 )
 export const orderListValidator = validate(
   checkSchema({
     ...paginationSchema,
+    search: { in: ['query'], optional: true, isString: true, trim: true },
     status: {
       in: ['query'],
       optional: true,

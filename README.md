@@ -73,15 +73,18 @@ Giá và tồn kho nằm ở **biến thể**. Mọi sản phẩm có ít nhất
 
 ### Đơn hàng — `/orders` (cần đăng nhập + đã verify email)
 
-| Method & path                                | Việc                                                                                                        |
-| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `POST /orders`                               | Tạo đơn từ giỏ: `{shipping_name, shipping_phone, shipping_address, note?, coupon_code?}`. Trừ kho, xoá giỏ  |
-| `GET /orders`, `GET /orders/:id`             | Đơn của chính mình (`?status=` để lọc)                                                                      |
-| `POST /orders/:id/cancel`                    | Khách tự huỷ khi đơn còn `Pending`, hoàn kho                                                                |
-| `GET /admin/orders`, `GET /admin/orders/:id` | Admin/Staff xem mọi đơn                                                                                     |
-| `PATCH /admin/orders/:id/status`             | Admin/Staff đổi trạng thái: `Pending → Confirmed → Shipping → Delivered`; huỷ được từ `Pending`/`Confirmed` |
+| Method & path                                | Việc                                                                                                                                                                                                                                           |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /orders`                               | Tạo đơn từ giỏ: `{shipping_name, shipping_phone, shipping_address, note?, coupon_code?}`. Trừ kho, xoá giỏ                                                                                                                                     |
+| `GET /orders`, `GET /orders/:id`             | Đơn của chính mình (`?status=` để lọc)                                                                                                                                                                                                         |
+| `POST /orders/:id/cancel {reason?}`          | Khách tự huỷ khi đơn còn `Pending`, hoàn kho                                                                                                                                                                                                   |
+| `GET /admin/orders`, `GET /admin/orders/:id` | Admin/Staff xem mọi đơn (kèm thông tin khách và `changed_by` trong lịch sử). `?search=` theo mã đơn, tên, SĐT người nhận                                                                                                                       |
+| `PATCH /admin/orders/:id/status`             | Admin/Staff đổi trạng thái: `Pending → Confirmed → Shipping → Delivered`; huỷ được từ `Pending`/`Confirmed`. Body `{status, note?, carrier?, tracking_code?}` (`note` khi huỷ là lý do huỷ; `carrier`/`tracking_code` chỉ khi sang `Shipping`) |
+| `PATCH /admin/orders/:id/tracking`           | Sửa `carrier`/`tracking_code` khi đơn đang `Shipping`                                                                                                                                                                                          |
 
 Chưa có thanh toán online (đơn mặc định là thanh toán khi nhận hàng).
+
+Mỗi đơn có `code` dễ đọc (vd `DH261005-7K3M9`) để khách tra cứu, `delivered_at`, `cancelled_at`, `cancel_reason`, `carrier`, `tracking_code` và `history` (dòng thời gian đổi trạng thái: `from_status`, `to_status`, `note`, `created_at`; `changed_by` null = hệ thống, vd tự huỷ quá hạn). Doanh thu trong thống kê tính theo `delivered_at`.
 
 Đơn `Pending` quá `ORDER_AUTO_CANCEL_HOURS` giờ (mặc định 48, `0` = tắt) chưa được xác nhận sẽ tự huỷ: trả hàng về kho, trả lượt dùng coupon và gửi mail cho khách. Job chạy mỗi 10 phút trong tiến trình server.
 

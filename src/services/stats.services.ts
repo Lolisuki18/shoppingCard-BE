@@ -7,7 +7,7 @@ import { ErrorWithStatus } from '~/models/Errors'
 import { LowStockQuery, RevenueQuery, StatsRangeQuery, TopProductsQuery } from '~/models/requests/Shop.requests'
 import { buildPage, getPagination } from '~/utils/pagination'
 
-//doanh thu = tổng total_amount của đơn đã giao (Delivered), tính theo ngày tạo đơn
+//doanh thu = tổng total_amount của đơn đã giao (Delivered), tính theo ngày giao (delivered_at)
 //ngày/tháng được cắt theo giờ Việt Nam (DB lưu UTC)
 const TIME_ZONE = 'Asia/Ho_Chi_Minh'
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -21,11 +21,17 @@ class StatsServices {
   async overview(query: StatsRangeQuery) {
     const created_at = dateRange(query)
     const orderWhere: Prisma.OrderWhereInput = { ...(created_at && { created_at }) }
+    //doanh thu tính theo ngày giao, các số liệu còn lại (số đơn theo trạng thái, khách mới) theo ngày tạo
+    const deliveredWhere: Prisma.OrderWhereInput = {
+      status: 'Delivered',
+      ...(created_at && { delivered_at: created_at })
+    }
     const [byStatus, delivered, newUsers, totalUsers, totalProducts, activeProducts] = await Promise.all([
       databaseService.orders.groupBy({ by: ['status'], where: orderWhere, _count: { _all: true } }),
       databaseService.orders.aggregate({
-        where: { ...orderWhere, status: 'Delivered' },
-        _sum: { total_amount: true, discount_amount: true }
+        where: deliveredWhere,
+        _sum: { total_amount: true, discount_amount: true },
+        _count: { _all: true }
       }),
       databaseService.users.count({ where: { ...(created_at && { created_at }) } }),
       databaseService.users.count(),
@@ -38,7 +44,7 @@ class StatsServices {
       number
     >
     for (const row of byStatus) orders_by_status[row.status] = row._count._all
-    const deliveredCount = orders_by_status.Delivered
+    const deliveredCount = delivered._count._all
     const revenue = delivered._sum.total_amount ?? 0
     return {
       revenue,
@@ -66,7 +72,7 @@ class StatsServices {
       throw new ErrorWithStatus({ status: HTTP_STATUS.UNPROCESSABLE_ENTITY, message: STATS_MESSAGES.RANGE_TOO_LARGE })
     }
     const step = unit === 'month' ? Prisma.sql`interval '1 month'` : Prisma.sql`interval '1 day'`
-    //created_at là timestamp không múi giờ (UTC): đổi sang giờ VN rồi mới cắt theo ngày/tháng
+    //delivered_at là timestamp không múi giờ (UTC): đổi sang giờ VN rồi mới cắt theo ngày/tháng
     const local = (column: Prisma.Sql) => Prisma.sql`(${column} AT TIME ZONE 'UTC' AT TIME ZONE ${TIME_ZONE})`
     const rows = await databaseService.$queryRaw<{ period: string; revenue: bigint; orders: number }[]>`
       WITH periods AS (
@@ -77,11 +83,11 @@ class StatsServices {
         ) AS period
       ),
       sales AS (
-        SELECT date_trunc(${unit}, ${local(Prisma.sql`created_at`)}) AS period,
+        SELECT date_trunc(${unit}, ${local(Prisma.sql`delivered_at`)}) AS period,
                SUM(total_amount) AS revenue,
                COUNT(*)::int AS orders
         FROM orders
-        WHERE status = 'Delivered' AND created_at >= ${start} AND created_at < ${end}
+        WHERE status = 'Delivered' AND delivered_at >= ${start} AND delivered_at < ${end}
         GROUP BY 1
       )
       SELECT to_char(periods.period, ${unit === 'month' ? 'YYYY-MM' : 'YYYY-MM-DD'}) AS period,
@@ -104,14 +110,14 @@ class StatsServices {
       { product_id: string | null; product_name: string; quantity_sold: number; revenue: bigint }[]
     >`
       SELECT (array_agg(oi.product_id))[1] AS product_id,
-             (array_agg(oi.product_name ORDER BY o.created_at DESC))[1] AS product_name,
+             (array_agg(oi.product_name ORDER BY o.delivered_at DESC))[1] AS product_name,
              SUM(oi.quantity)::int AS quantity_sold,
              SUM(oi.quantity::bigint * oi.unit_price)::bigint AS revenue
       FROM order_items oi
       JOIN orders o ON o.id = oi.order_id
       WHERE o.status = 'Delivered'
-        ${created_at?.gte ? Prisma.sql`AND o.created_at >= ${created_at.gte}` : Prisma.empty}
-        ${created_at?.lt ? Prisma.sql`AND o.created_at < ${created_at.lt}` : Prisma.empty}
+        ${created_at?.gte ? Prisma.sql`AND o.delivered_at >= ${created_at.gte}` : Prisma.empty}
+        ${created_at?.lt ? Prisma.sql`AND o.delivered_at < ${created_at.lt}` : Prisma.empty}
       GROUP BY COALESCE(oi.product_id::text, 'name:' || oi.product_name)
       ORDER BY quantity_sold DESC, revenue DESC
       LIMIT ${take}`

@@ -128,22 +128,29 @@ class MailServices {
         ? `<tr><td>Giảm giá (${escapeHtml(order.coupon_code)})</td><td style="text-align:right">-${vnd(order.discount_amount)}</td></tr>`
         : ''
       const shipping = `<tr><td>Phí vận chuyển</td><td style="text-align:right">${order.shipping_fee ? vnd(order.shipping_fee) : 'Miễn phí'}</td></tr>`
+      const tracking = order.tracking_code
+        ? `<p>Vận chuyển: ${escapeHtml(order.carrier || 'Đơn vị vận chuyển')} - mã vận đơn <b>${escapeHtml(order.tracking_code)}</b></p>`
+        : ''
+      const reason =
+        order.status === 'Cancelled' && order.cancel_reason
+          ? `<p>Lý do huỷ: ${escapeHtml(order.cancel_reason)}</p>`
+          : ''
       const table = `<table style="width:100%;border-collapse:collapse">${rows}${discount}${shipping}<tr><td><b>Tổng thanh toán</b></td><td style="text-align:right"><b>${vnd(order.total_amount)}</b></td></tr></table>
-<p>Giao đến: ${escapeHtml(order.shipping_name)} - ${escapeHtml(order.shipping_phone)}<br>${escapeHtml(order.shipping_address)}</p>`
-      const ref = order.id.slice(0, 8).toUpperCase()
+${tracking}${reason}<p>Giao đến: ${escapeHtml(order.shipping_name)} - ${escapeHtml(order.shipping_phone)}<br>${escapeHtml(order.shipping_address)}</p>`
+      const ref = order.code
       const created = kind === 'created'
       return this.send({
         to: order.user.email,
         subject: created
-          ? `[${shopName()}] Đã nhận đơn hàng #${ref}`
-          : `[${shopName()}] Đơn hàng #${ref} ${STATUS_TEXT[order.status]}`,
+          ? `[${shopName()}] Đã nhận đơn hàng ${ref}`
+          : `[${shopName()}] Đơn hàng ${ref} ${STATUS_TEXT[order.status]}`,
         html: this.layout(
-          created ? 'Cảm ơn bạn đã đặt hàng' : `Đơn hàng #${ref} ${STATUS_TEXT[order.status]}`,
+          created ? `Cảm ơn bạn đã đặt hàng (${ref})` : `Đơn hàng ${ref} ${STATUS_TEXT[order.status]}`,
           `<p>Xin chào ${escapeHtml(order.user.name || 'bạn')},</p>${table}`
         ),
         text: created
-          ? `Đã nhận đơn #${ref}, tổng ${vnd(order.total_amount)}.`
-          : `Đơn #${ref} ${STATUS_TEXT[order.status]}.`
+          ? `Đã nhận đơn ${ref}, tổng ${vnd(order.total_amount)}.`
+          : `Đơn ${ref} ${STATUS_TEXT[order.status]}.`
       })
     } catch (error) {
       logger.error('không gửi được mail đơn hàng', { order_id, error })

@@ -2,7 +2,13 @@ import { Request, Response } from 'express'
 import { ParamsDictionary } from 'express-serve-static-core'
 import HTTP_STATUS from '~/constants/httpStatus'
 import { ORDER_MESSAGES } from '~/constants/messages'
-import { CreateOrderReqBody, OrderListQuery, UpdateOrderStatusReqBody } from '~/models/requests/Shop.requests'
+import {
+  CancelOrderReqBody,
+  CreateOrderReqBody,
+  OrderListQuery,
+  UpdateOrderStatusReqBody,
+  UpdateTrackingReqBody
+} from '~/models/requests/Shop.requests'
 import { TokenPayLoad } from '~/models/requests/User.requests'
 import ordersServices from '~/services/orders.services'
 
@@ -27,8 +33,11 @@ export const getMyOrderController = async (req: Request<ParamsDictionary>, res: 
   res.status(HTTP_STATUS.OK).json({ message: ORDER_MESSAGES.GET_SUCCESS, result })
 }
 
-export const cancelMyOrderController = async (req: Request<ParamsDictionary>, res: Response) => {
-  const result = await ordersServices.cancelByCustomer(req.params.id, getUserId(req))
+export const cancelMyOrderController = async (
+  req: Request<ParamsDictionary, any, CancelOrderReqBody>,
+  res: Response
+) => {
+  const result = await ordersServices.cancelByCustomer(req.params.id, getUserId(req), req.body.reason)
   res.status(HTTP_STATUS.OK).json({ message: ORDER_MESSAGES.CANCEL_SUCCESS, result })
 }
 
@@ -50,6 +59,14 @@ export const adminUpdateOrderStatusController = async (
   req: Request<ParamsDictionary, any, UpdateOrderStatusReqBody>,
   res: Response
 ) => {
-  const result = await ordersServices.updateStatus(req.params.id, req.body.status)
+  const result = await ordersServices.updateStatus(req.params.id, req.body, getUserId(req))
   res.status(HTTP_STATUS.OK).json({ message: ORDER_MESSAGES.UPDATE_STATUS_SUCCESS, result })
+}
+
+export const adminUpdateTrackingController = async (
+  req: Request<ParamsDictionary, any, UpdateTrackingReqBody>,
+  res: Response
+) => {
+  const result = await ordersServices.updateTracking(req.params.id, req.body)
+  res.status(HTTP_STATUS.OK).json({ message: ORDER_MESSAGES.UPDATE_TRACKING_SUCCESS, result })
 }

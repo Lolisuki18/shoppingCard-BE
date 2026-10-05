@@ -7,9 +7,14 @@ import {
 } from '~/controllers/orders.controllers'
 import { requireVerifiedUser } from '~/middlewares/auth.middlewares'
 import { filterMiddleware } from '~/middlewares/common.middleware'
-import { createOrderValidator, idParamValidator, orderListValidator } from '~/middlewares/shop.middlewares'
+import {
+  cancelOrderValidator,
+  createOrderValidator,
+  idParamValidator,
+  orderListValidator
+} from '~/middlewares/shop.middlewares'
 import { accessTokenValidation } from '~/middlewares/users.middlewares'
-import { CreateOrderReqBody } from '~/models/requests/Shop.requests'
+import { CancelOrderReqBody, CreateOrderReqBody } from '~/models/requests/Shop.requests'
 import { wrapAsync } from '~/utils/handlers'
 
 const orderRouter = Router()
@@ -33,6 +38,12 @@ orderRouter.post(
 )
 orderRouter.get('/', orderListValidator, wrapAsync(getMyOrdersController))
 orderRouter.get('/:id', idParamValidator, wrapAsync(getMyOrderController))
-orderRouter.post('/:id/cancel', idParamValidator, wrapAsync(cancelMyOrderController))
+orderRouter.post(
+  '/:id/cancel',
+  idParamValidator,
+  filterMiddleware<CancelOrderReqBody>(['reason']),
+  cancelOrderValidator,
+  wrapAsync(cancelMyOrderController)
+)
 
 export default orderRouter
