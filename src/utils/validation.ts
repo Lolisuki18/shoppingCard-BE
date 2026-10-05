@@ -45,7 +45,7 @@ export const validate = (validations: RunnableValidationChains<ValidationChain>)
       //validate chỉ bắt lỗi 422 thôi -> nếu ko phải thì đưa cho thằng tổng xử lý
       //những lỗi mình tự tạo có dạng ErrorWithStatus và mã phải 422 nó mới xử lý
       if (msg instanceof ErrorWithStatus && msg.status !== HTTP_STATUS.UNPROCESSABLE_ENTITY) {
-        next(msg)
+        return next(msg) //return để không gọi next() lần thứ hai bên dưới (trước đây 1 request bị xử lý lỗi 2 lần)
       }
       //những lồi là 422 sẽ được nhét vào entityError
       entityError.errors[key] = errorObject[key].msg

@@ -238,11 +238,15 @@ export const accessTokenValidation = validate(
   checkSchema(
     {
       Authorization: {
-        notEmpty: {
-          errorMessage: USERS_MESSAGES.ACCESS_TOKEN_IS_REQUIRED
-        },
         custom: {
           options: async (value, { req }) => {
+            //không gửi header Authorization thì phải là 401 (trước đây rơi vào lỗi validate 422)
+            if (!value) {
+              throw new ErrorWithStatus({
+                status: HTTP_STATUS.UNAUTHORIZED, //401
+                message: USERS_MESSAGES.ACCESS_TOKEN_IS_REQUIRED
+              })
+            }
             //value này 'Bearer <access_token>'
             const access_token = value.split(' ')[1] // có trường hợp người dùng chỉ người chữ bearer à ko gửi accesstoken
             // sẽ bị null -> sẽ bị cash hệ thống

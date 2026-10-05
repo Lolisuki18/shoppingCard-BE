@@ -67,7 +67,7 @@ export const registerController = async (
   const isEmailExits = await usersServices.checkEmailExist(email)
   if (isEmailExits) {
     throw new ErrorWithStatus({
-      status: HTTP_STATUS.UNAUTHORIZED, //401
+      status: HTTP_STATUS.CONFLICT, //409 (trước đây trả 401 làm FE tưởng hết phiên đăng nhập)
       message: USERS_MESSAGES.EMAIL_ALREADY_EXISTS
     })
   }

@@ -17,6 +17,17 @@ npm run dev                 # http://localhost:3000
 
 Gửi qua SMTP (nodemailer): xác thực email, quên mật khẩu, xác nhận đơn, đổi trạng thái đơn. Cấu hình `SMTP_*`, `MAIL_FROM`, `API_URL`, `CLIENT_URL` trong `.env` (xem `.env.example`). Để trống `SMTP_HOST` thì nội dung mail chỉ được in ra log (tiện khi dev). Gửi mail lỗi chỉ ghi log, không làm request thất bại.
 
+## Test
+
+Test tích hợp chạy trên PostgreSQL thật (vitest + supertest), phủ đăng ký/đăng nhập, phân quyền, giỏ hàng, biến thể, đặt hàng, coupon, huỷ đơn, tự huỷ quá hạn, chống bán quá tồn kho khi đặt song song, thống kê, bảo mật và việc docs OpenAPI khớp với route thật.
+
+```bash
+createdb shoppingcard_test   # hoặc: docker compose exec postgres createdb -U shoppingcard shoppingcard_test
+npm test                     # dùng TEST_DATABASE_URL, mặc định postgresql://shoppingcard:shoppingcard@localhost:5433/shoppingcard_test
+```
+
+**Database test bị xoá sạch dữ liệu mỗi lần chạy** nên không được trỏ `TEST_DATABASE_URL` vào database thật. Migration được áp dụng tự động trước khi chạy.
+
 ## Bảo mật & lỗi
 
 - `helmet`, CORS theo `CORS_ORIGIN` (mặc định `CLIENT_URL`), body JSON tối đa 100kb.
@@ -125,7 +136,7 @@ Sản phẩm có thêm `rating_avg` (0 nếu chưa có đánh giá) và `rating_
 
 ### Thống kê (dashboard) — `/admin/stats`, chỉ Admin
 
-Doanh thu tính trên đơn `Delivered`, theo ngày tạo đơn; ngày/tháng cắt theo giờ Việt Nam (`Asia/Ho_Chi_Minh`). `from` tính, `to` không tính (`from <= created_at < to`), định dạng ISO 8601 (vd `2026-10-01`).
+Doanh thu tính trên đơn `Delivered`, theo ngày giao (`delivered_at`); ngày/tháng cắt theo giờ Việt Nam (`Asia/Ho_Chi_Minh`). `from` tính, `to` không tính (`from <= thời điểm < to`), định dạng ISO 8601. Ngày không kèm múi giờ (vd `2026-10-01`) được hiểu là 00:00 UTC; muốn tính theo ngày Việt Nam hãy truyền `2026-10-01T00:00:00+07:00`.
 
 | Method & path                                     | Ghi chú                                                                                                                                                              |
 | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

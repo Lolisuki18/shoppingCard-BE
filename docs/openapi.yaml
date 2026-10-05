@@ -58,6 +58,7 @@ paths:
                 date_of_birth: { type: string, format: date-time }
       responses:
         '201': { $ref: '#/components/responses/Tokens' }
+        '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationError' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
   /users/login:
@@ -118,7 +119,7 @@ paths:
   /users/forgot-password:
     post:
       tags: [Users]
-      summary: Quên mật khẩu (gửi link đặt lại; luôn trả 200 dù email có tồn tại hay không)
+      summary: Quên mật khẩu (gửi link đặt lại vào email, 404 nếu email chưa đăng ký)
       requestBody:
         required: true
         content:
@@ -126,6 +127,7 @@ paths:
             schema: { type: object, required: [email], properties: { email: { type: string, format: email } } }
       responses:
         '200': { $ref: '#/components/responses/Message' }
+        '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
   /users/verify-forgot-password:
     post:
@@ -1138,7 +1140,7 @@ paths:
   /admin/stats/overview:
     get:
       tags: [Admin]
-      summary: Tổng quan (Admin). `from` tính, `to` không tính
+      summary: 'Tổng quan (Admin). from tính, to không tính; truyền kèm +07:00 để tính theo ngày Việt Nam'
       security: [{ bearerAuth: [] }]
       parameters:
         - { name: from, in: query, schema: { type: string, format: date-time } }
