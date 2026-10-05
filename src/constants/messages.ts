@@ -156,6 +156,8 @@ export const CART_MESSAGES = {
   ADD_SUCCESS: 'Add to cart success',
   UPDATE_SUCCESS: 'Update cart item success',
   REMOVE_SUCCESS: 'Remove cart item success',
+  ITEMS_MUST_BE_A_LIST: 'items must be a list of 1 - 50 cart lines',
+  MERGE_SUCCESS: 'Merge cart success',
   CLEAR_SUCCESS: 'Clear cart success'
 } as const
 

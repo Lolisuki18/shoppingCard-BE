@@ -53,6 +53,9 @@ export interface AddToCartReqBody {
   variant_id?: string //bắt buộc nếu sản phẩm có nhiều biến thể
   quantity: number
 }
+export interface MergeCartReqBody {
+  items: { product_id: string; variant_id?: string; quantity: number }[]
+}
 export interface UpdateCartItemReqBody {
   variant_id?: string
   quantity: number

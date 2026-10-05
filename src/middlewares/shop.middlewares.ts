@@ -285,6 +285,20 @@ export const updateCartItemValidator = validate(
     quantity: { in: ['body'], ...quantitySchema }
   })
 )
+//POST /cart/merge: gộp giỏ hàng khách vãng lai vào giỏ tài khoản
+export const mergeCartValidator = validate(
+  checkSchema(
+    {
+      items: {
+        isArray: { options: { min: 1, max: 50 }, errorMessage: CART_MESSAGES.ITEMS_MUST_BE_A_LIST }
+      },
+      'items.*.product_id': uuidSchema(CART_MESSAGES.PRODUCT_ID_IS_INVALID),
+      'items.*.variant_id': variantIdSchema,
+      'items.*.quantity': quantitySchema
+    },
+    ['body']
+  )
+)
 //DELETE /cart/items/:product_id?variant_id=
 export const cartItemParamValidator = validate(
   checkSchema({

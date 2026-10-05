@@ -2,7 +2,7 @@ import { Request, Response } from 'express'
 import { ParamsDictionary } from 'express-serve-static-core'
 import HTTP_STATUS from '~/constants/httpStatus'
 import { CART_MESSAGES } from '~/constants/messages'
-import { AddToCartReqBody, UpdateCartItemReqBody } from '~/models/requests/Shop.requests'
+import { AddToCartReqBody, MergeCartReqBody, UpdateCartItemReqBody } from '~/models/requests/Shop.requests'
 import { TokenPayLoad } from '~/models/requests/User.requests'
 import cartsServices from '~/services/carts.services'
 
@@ -48,4 +48,9 @@ export const removeCartItemController = async (
 export const clearCartController = async (req: Request, res: Response) => {
   await cartsServices.clear(getUserId(req))
   res.status(HTTP_STATUS.OK).json({ message: CART_MESSAGES.CLEAR_SUCCESS })
+}
+
+export const mergeCartController = async (req: Request<ParamsDictionary, any, MergeCartReqBody>, res: Response) => {
+  const result = await cartsServices.merge(getUserId(req), req.body.items)
+  res.status(HTTP_STATUS.OK).json({ message: CART_MESSAGES.MERGE_SUCCESS, result })
 }

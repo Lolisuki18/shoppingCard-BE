@@ -2,6 +2,8 @@ import databaseService from './database.services'
 import HTTP_STATUS from '~/constants/httpStatus'
 import { CART_MESSAGES } from '~/constants/messages'
 import { ErrorWithStatus } from '~/models/Errors'
+import { MergeCartReqBody } from '~/models/requests/Shop.requests'
+import { lockUserRow } from '~/utils/locks'
 import { calculateShippingFee, getShippingConfig } from '~/utils/shipping'
 
 const itemNotFound = () => new ErrorWithStatus({ status: HTTP_STATUS.NOT_FOUND, message: CART_MESSAGES.ITEM_NOT_FOUND })
@@ -115,6 +117,67 @@ class CartsServices {
     const item = await this.findLine(user_id, product_id, variant_id)
     await databaseService.cartItems.delete({ where: { id: item.id } })
     return this.getCart(user_id)
+  }
+
+  //gộp giỏ của khách vãng lai (FE giữ trong localStorage) vào giỏ của tài khoản sau khi đăng nhập.
+  //Dòng đã có trong giỏ thì lấy số lượng LỚN HƠN của hai bên (không cộng dồn) nên gọi lại nhiều lần / thiết bị cũ vẫn không bị nhân đôi.
+  //Dòng không hợp lệ (hết bán, thiếu variant_id...) bị bỏ qua và báo trong `skipped`; vượt tồn kho thì hạ xuống tối đa còn hàng và báo trong `adjusted`
+  async merge(user_id: string, input: MergeCartReqBody['items']) {
+    //gộp các dòng trùng nhau trong chính payload (cùng sản phẩm + biến thể)
+    const wanted = new Map<string, MergeCartReqBody['items'][number]>()
+    for (const line of input) {
+      const key = `${line.product_id}:${line.variant_id ?? ''}`
+      const existing = wanted.get(key)
+      wanted.set(key, existing ? { ...existing, quantity: Math.min(existing.quantity + line.quantity, 999) } : line)
+    }
+    const skipped: {
+      product_id: string
+      variant_id?: string
+      reason: 'not_available' | 'variant_required' | 'out_of_stock'
+    }[] = []
+    const adjusted: { product_id: string; variant_id: string; quantity: number }[] = []
+
+    await databaseService.$transaction(async (tx) => {
+      await lockUserRow(tx, user_id) //2 lần gộp cùng lúc xếp hàng lần lượt
+      for (const line of wanted.values()) {
+        const variants = await tx.productVariant.findMany({
+          where: {
+            product_id: line.product_id,
+            is_active: true,
+            product: { is_active: true },
+            ...(line.variant_id && { id: line.variant_id })
+          },
+          select: { id: true, stock: true }
+        })
+        const skip = (reason: (typeof skipped)[number]['reason']) =>
+          skipped.push({ product_id: line.product_id, ...(line.variant_id && { variant_id: line.variant_id }), reason })
+        if (variants.length === 0) {
+          skip('not_available')
+          continue
+        }
+        if (variants.length > 1) {
+          skip('variant_required')
+          continue
+        }
+        const [variant] = variants
+        const key = { user_id_variant_id: { user_id, variant_id: variant.id } }
+        const existing = await tx.cartItem.findUnique({ where: key, select: { quantity: true } })
+        const target = Math.max(existing?.quantity ?? 0, line.quantity)
+        const quantity = Math.min(target, variant.stock)
+        if (quantity <= 0) {
+          skip('out_of_stock')
+          continue
+        }
+        if (quantity < target) adjusted.push({ product_id: line.product_id, variant_id: variant.id, quantity })
+        if (existing && existing.quantity === quantity) continue //không đổi gì
+        await tx.cartItem.upsert({
+          where: key,
+          create: { user_id, product_id: line.product_id, variant_id: variant.id, quantity },
+          update: { quantity }
+        })
+      }
+    })
+    return { cart: await this.getCart(user_id), skipped, adjusted }
   }
 
   async clear(user_id: string) {

@@ -3,14 +3,20 @@ import {
   addToCartController,
   clearCartController,
   getCartController,
+  mergeCartController,
   removeCartItemController,
   updateCartItemController
 } from '~/controllers/carts.controllers'
 import { requireVerifiedUser } from '~/middlewares/auth.middlewares'
 import { filterMiddleware } from '~/middlewares/common.middleware'
-import { addToCartValidator, cartItemParamValidator, updateCartItemValidator } from '~/middlewares/shop.middlewares'
+import {
+  addToCartValidator,
+  cartItemParamValidator,
+  mergeCartValidator,
+  updateCartItemValidator
+} from '~/middlewares/shop.middlewares'
 import { accessTokenValidation } from '~/middlewares/users.middlewares'
-import { AddToCartReqBody, UpdateCartItemReqBody } from '~/models/requests/Shop.requests'
+import { AddToCartReqBody, MergeCartReqBody, UpdateCartItemReqBody } from '~/models/requests/Shop.requests'
 import { wrapAsync } from '~/utils/handlers'
 
 const cartRouter = Router()
@@ -20,6 +26,13 @@ cartRouter.use(accessTokenValidation, requireVerifiedUser)
 
 cartRouter.get('/', wrapAsync(getCartController))
 cartRouter.delete('/', wrapAsync(clearCartController))
+//gộp giỏ hàng khách vãng lai (FE lưu ở localStorage) vào giỏ tài khoản ngay sau khi đăng nhập
+cartRouter.post(
+  '/merge',
+  filterMiddleware<MergeCartReqBody>(['items']),
+  mergeCartValidator,
+  wrapAsync(mergeCartController)
+)
 cartRouter.post(
   '/items',
   filterMiddleware<AddToCartReqBody>(['product_id', 'variant_id', 'quantity']),

@@ -71,6 +71,8 @@ Giá và tồn kho nằm ở **biến thể**. Mọi sản phẩm có ít nhất
 
 `GET /cart`, `DELETE /cart`, `POST /cart/items {product_id, variant_id?, quantity}` (cộng dồn), `PATCH /cart/items/:product_id {variant_id?, quantity}`, `DELETE /cart/items/:product_id?variant_id=`. `variant_id` bắt buộc khi sản phẩm có nhiều biến thể (422 nếu thiếu); mỗi dòng trong giỏ trả thêm `variant`.
 
+**Giỏ hàng khách vãng lai:** FE giữ giỏ tạm ở localStorage, sau khi đăng nhập gọi `POST /cart/merge {items: [{product_id, variant_id?, quantity}]}` (1 - 50 dòng) rồi xoá giỏ tạm. Dòng đã có trong giỏ tài khoản thì lấy số lượng **lớn hơn** của hai bên (không cộng dồn, nên gọi lại không bị nhân đôi). Trả `{cart, skipped, adjusted}`: `skipped` là các dòng bỏ qua (`not_available`, `variant_required`, `out_of_stock`), `adjusted` là các dòng bị hạ xuống bằng tồn kho.
+
 ### Đơn hàng — `/orders` (cần đăng nhập + đã verify email)
 
 | Method & path                                | Việc                                                                                                                                                                                                                                           |
