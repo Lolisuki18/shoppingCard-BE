@@ -147,6 +147,35 @@ class OrdersServices {
     return this.getById(id, user_id)
   }
 
+  //tự huỷ các đơn Pending quá lâu không được xác nhận: trả hàng về kho + trả lượt coupon. Trả về số đơn đã huỷ
+  //nhiều instance chạy cùng lúc vẫn an toàn: cancelAndRestock chỉ thành công với instance đầu tiên (điều kiện status)
+  async cancelExpiredPending(olderThanHours: number) {
+    const cutoff = new Date(Date.now() - olderThanHours * 60 * 60 * 1000)
+    const BATCH = 100
+    let cancelled = 0
+    for (;;) {
+      const expired = await databaseService.orders.findMany({
+        where: { status: 'Pending', created_at: { lt: cutoff } },
+        select: { id: true },
+        orderBy: { created_at: 'asc' },
+        take: BATCH
+      })
+      let cancelledInBatch = 0
+      for (const { id } of expired) {
+        try {
+          await databaseService.$transaction((tx) => cancelAndRestock(tx, id, 'Pending'))
+          cancelledInBatch++
+          void mailServices.sendOrderMail(id, 'status')
+        } catch (error) {
+          //đơn vừa được xác nhận/huỷ bởi người khác giữa chừng -> bỏ qua đơn này
+          if (!(error instanceof ErrorWithStatus && error.status === HTTP_STATUS.CONFLICT)) throw error
+        }
+      }
+      cancelled += cancelledInBatch
+      if (expired.length < BATCH || cancelledInBatch === 0) return cancelled
+    }
+  }
+
   //Admin/Staff đổi trạng thái theo bảng ALLOWED_TRANSITIONS
   async updateStatus(id: string, status: OrderStatus) {
     await databaseService.$transaction(async (tx) => {

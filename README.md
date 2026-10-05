@@ -74,6 +74,8 @@ Giá tiền là số nguyên (VND). Danh sách phân trang trả `result: { item
 
 Chưa có thanh toán online (đơn mặc định là thanh toán khi nhận hàng).
 
+Đơn `Pending` quá `ORDER_AUTO_CANCEL_HOURS` giờ (mặc định 48, `0` = tắt) chưa được xác nhận sẽ tự huỷ: trả hàng về kho, trả lượt dùng coupon và gửi mail cho khách. Job chạy mỗi 10 phút trong tiến trình server.
+
 ### Mã giảm giá
 
 Đơn có thêm `coupon_code`, `discount_amount`; `total_amount` là số tiền khách phải trả (đã trừ giảm giá). Mã không phân biệt hoa/thường. Huỷ đơn thì trả lại lượt dùng mã.
