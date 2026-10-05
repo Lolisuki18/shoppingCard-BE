@@ -48,6 +48,9 @@ jobs:
       - name: Prettier
         run: npx prettier --check .
 
+      - name: ESLint
+        run: npm run lint
+
       - name: Type check and build
         run: npm run build
 

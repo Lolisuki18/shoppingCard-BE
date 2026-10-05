@@ -334,5 +334,5 @@ class UsersServices {
 }
 
 //chơi với database phải await async vì nó sẽ tốn thời gian
-let usersServices = new UsersServices()
+const usersServices = new UsersServices()
 export default usersServices

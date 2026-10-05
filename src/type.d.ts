@@ -1,5 +1,6 @@
 //định nghĩa lại tất cả các thư viện của mình nếu cần
 // định nghĩa lại các interface trong thư viện của mình nếu mình cần
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- cần import để augment module 'express' bên dưới
 import { Request } from 'express'
 import { TokenPayLoad } from './models/requests/User.requests'
 declare module 'express' {

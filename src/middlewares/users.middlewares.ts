@@ -334,7 +334,7 @@ export const emailVerifyTokenValidation = validate(
               })
               //decode_email_verify_token là payloda của email_verify_token
               ;(req as Request).decode_email_verify_token = decode_email_verify_token
-            } catch (error) {
+            } catch {
               throw new ErrorWithStatus({
                 status: HTTP_STATUS.UNAUTHORIZED, //401
                 message: USERS_MESSAGES.EMAIL_IS_INVALID
@@ -464,7 +464,7 @@ export const updateMeValidator = validate(
           errorMessage: USERS_MESSAGES.USERNAME_LENGTH_MUST_BE_LESS_THAN_50 //messages.ts thêm USERNAME_LENGTH_MUST_BE_LESS_THAN_50: 'Username length must be less than 50'
         },
         custom: {
-          options: (value: string, { req }) => {
+          options: (value: string) => {
             //value chính là username
             if (!REGEX_USERNAME.test(value)) {
               throw new Error(USERS_MESSAGES.USERNAME_IS_INVALID)

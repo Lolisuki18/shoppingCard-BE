@@ -87,7 +87,7 @@ class DatabaseService {
   }
 }
 
-let databaseService = new DatabaseService()
+const databaseService = new DatabaseService()
 export default databaseService
 //tất cả những thằng ở services nên là class
 
