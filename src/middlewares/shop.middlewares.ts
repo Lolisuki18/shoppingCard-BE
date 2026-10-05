@@ -3,6 +3,7 @@ import { checkSchema, CustomValidator, ParamSchema } from 'express-validator'
 import { DiscountType, OrderStatus } from '@prisma/client'
 import {
   ADDRESS_MESSAGES,
+  ADMIN_USER_MESSAGES,
   CART_MESSAGES,
   CATEGORY_MESSAGES,
   COMMON_MESSAGES,
@@ -521,4 +522,35 @@ export const lowStockValidator = validate(
       toInt: true
     }
   })
+)
+
+//---------------- quản lý người dùng (Admin) ----------------
+export const adminUserListValidator = validate(
+  checkSchema({
+    ...paginationSchema,
+    search: { in: ['query'], optional: true, isString: true, trim: true },
+    role: {
+      in: ['query'],
+      optional: true,
+      isIn: { options: [['0', '1', '2']], errorMessage: ADMIN_USER_MESSAGES.ROLE_IS_INVALID },
+      toInt: true
+    },
+    verify: {
+      in: ['query'],
+      optional: true,
+      isIn: { options: [['0', '1', '2']], errorMessage: ADMIN_USER_MESSAGES.VERIFY_IS_INVALID },
+      toInt: true
+    }
+  })
+)
+export const updateUserRoleValidator = validate(
+  checkSchema(
+    {
+      role: {
+        isInt: { options: { min: 0, max: 2 }, errorMessage: ADMIN_USER_MESSAGES.ROLE_IS_INVALID },
+        toInt: true
+      }
+    },
+    ['body']
+  )
 )

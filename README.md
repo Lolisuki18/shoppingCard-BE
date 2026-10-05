@@ -127,6 +127,15 @@ Doanh thu tính trên đơn `Delivered`, theo ngày tạo đơn; ngày/tháng c�
 | `GET /admin/stats/top-products?from&to&limit`     | Bán chạy theo số lượng (`limit` mặc định 10, tối đa 50). `revenue` là tiền hàng, chưa trừ mã giảm giá                                                                |
 | `GET /admin/stats/low-stock?threshold&page&limit` | Biến thể đang bán có `stock <= threshold` (mặc định 5), ít hàng nhất lên đầu (`variant_name` rỗng = sản phẩm không có tuỳ chọn)                                      |
 
+### Quản lý người dùng — `/admin/users`, chỉ Admin
+
+| Method & path                                              | Ghi chú                                                                                                                                           |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /admin/users` (`?search=&role=&verify=&page=&limit=`) | `search` theo tên/email/username. Không bao giờ trả mật khẩu hay token; kèm `_count.orders`                                                       |
+| `GET /admin/users/:id`                                     |                                                                                                                                                   |
+| `POST /admin/users/:id/ban`, `POST /admin/users/:id/unban` | Khoá: không đăng nhập/refresh/đặt hàng được, bị đăng xuất mọi thiết bị. Mở khoá: về `Verified` nếu đã từng xác thực email, không thì `Unverified` |
+| `PATCH /admin/users/:id/role {role}`                       | `0` Admin, `1` Staff, `2` User; có hiệu lực ngay. Không tự khoá / đổi role của chính mình                                                         |
+
 ### Phân quyền
 
 Role lưu trong DB (`0` Admin, `1` Staff, `2` User) và được kiểm tra mỗi request, nên đổi role hay khoá tài khoản có hiệu lực ngay.

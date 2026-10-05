@@ -1,6 +1,13 @@
 import { Router } from 'express'
 import { USER_ROLE } from '~/constants/enums'
 import {
+  adminBanUserController,
+  adminGetUserController,
+  adminGetUsersController,
+  adminUnbanUserController,
+  adminUpdateUserRoleController
+} from '~/controllers/adminUsers.controllers'
+import {
   adminCreateCouponController,
   adminDeleteCouponController,
   adminGetCouponController,
@@ -22,6 +29,7 @@ import { adminGetProductController, adminGetProductsController } from '~/control
 import { requireRoles } from '~/middlewares/auth.middlewares'
 import { filterMiddleware } from '~/middlewares/common.middleware'
 import {
+  adminUserListValidator,
   couponListValidator,
   createCouponValidator,
   idParamValidator,
@@ -32,10 +40,11 @@ import {
   revenueStatsValidator,
   topProductsValidator,
   updateCouponValidator,
-  updateOrderStatusValidator
+  updateOrderStatusValidator,
+  updateUserRoleValidator
 } from '~/middlewares/shop.middlewares'
 import { accessTokenValidation } from '~/middlewares/users.middlewares'
-import { CouponReqBody, UpdateOrderStatusReqBody } from '~/models/requests/Shop.requests'
+import { CouponReqBody, UpdateOrderStatusReqBody, UpdateUserRoleReqBody } from '~/models/requests/Shop.requests'
 import { wrapAsync } from '~/utils/handlers'
 
 //khu vực quản trị: chỉ Admin + Staff
@@ -99,5 +108,19 @@ adminRouter.get('/stats/overview', overviewStatsValidator, wrapAsync(overviewSta
 adminRouter.get('/stats/revenue', revenueStatsValidator, wrapAsync(revenueStatsController))
 adminRouter.get('/stats/top-products', topProductsValidator, wrapAsync(topProductsController))
 adminRouter.get('/stats/low-stock', lowStockValidator, wrapAsync(lowStockController))
+
+//quản lý người dùng: chỉ Admin
+adminRouter.use('/users', requireRoles(USER_ROLE.Admin))
+adminRouter.get('/users', adminUserListValidator, wrapAsync(adminGetUsersController))
+adminRouter.get('/users/:id', idParamValidator, wrapAsync(adminGetUserController))
+adminRouter.post('/users/:id/ban', idParamValidator, wrapAsync(adminBanUserController))
+adminRouter.post('/users/:id/unban', idParamValidator, wrapAsync(adminUnbanUserController))
+adminRouter.patch(
+  '/users/:id/role',
+  idParamValidator,
+  filterMiddleware<UpdateUserRoleReqBody>(['role']),
+  updateUserRoleValidator,
+  wrapAsync(adminUpdateUserRoleController)
+)
 
 export default adminRouter

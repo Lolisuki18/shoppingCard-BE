@@ -133,3 +133,13 @@ export interface AddressReqBody {
   is_default?: boolean
 }
 export type UpdateAddressReqBody = Partial<AddressReqBody>
+
+//quản lý người dùng (Admin)
+export interface AdminUserListQuery extends PaginationQuery {
+  search?: string
+  role?: any
+  verify?: any
+}
+export interface UpdateUserRoleReqBody {
+  role: number
+}

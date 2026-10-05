@@ -7,7 +7,7 @@ import { signToken } from '~/utils/jwt'
 import { TokenType, UserVerifyStatus } from '~/constants/enums'
 import { ErrorWithStatus } from '~/models/Errors'
 import HTTP_STATUS from '~/constants/httpStatus'
-import { USERS_MESSAGES } from '~/constants/messages'
+import { AUTH_MESSAGES, USERS_MESSAGES } from '~/constants/messages'
 import mailServices from './mail.services'
 import dotenv from 'dotenv'
 dotenv.config()
@@ -130,7 +130,7 @@ class UsersServices {
     //bcrypt có salt ngẫu nhiên nên không thể tìm bằng hash được -> tìm theo email rồi so sánh password
     const user = await databaseService.users.findUnique({
       where: { email },
-      select: { id: true, password: true }
+      select: { id: true, password: true, verify: true }
     })
 
     if (!user || !(await comparePassword(password, user.password))) {
@@ -138,6 +138,10 @@ class UsersServices {
         status: HTTP_STATUS.UNPROCESSABLE_ENTITY, //422
         message: USERS_MESSAGES.EMAIL_OR_PASSWORD_IS_INCORRECT
       })
+    }
+    //tài khoản bị khoá không được đăng nhập (kiểm tra sau khi đúng mật khẩu để không lộ trạng thái tài khoản cho người lạ)
+    if (user.verify === UserVerifyStatus.Banned) {
+      throw new ErrorWithStatus({ status: HTTP_STATUS.FORBIDDEN, message: AUTH_MESSAGES.ACCOUNT_IS_BANNED })
     }
     //nếu có user thì tạo at và rf
     return this.signAndSaveTokens(user.id)
@@ -305,6 +309,12 @@ class UsersServices {
     user_id: string
     refresh_token: string
   }) {
+    //tài khoản bị khoá thì không cấp token mới nữa
+    const account = await databaseService.users.findUnique({ where: { id: user_id }, select: { verify: true } })
+    if (account?.verify === UserVerifyStatus.Banned) {
+      await databaseService.refreshTokens.deleteMany({ where: { user_id } })
+      throw new ErrorWithStatus({ status: HTTP_STATUS.FORBIDDEN, message: AUTH_MESSAGES.ACCOUNT_IS_BANNED })
+    }
     // tạo 2 ac và rf(chưa tính đến vấn đề nó sẽ bị route timing)
     const [access_token, new_refresh_token] = await Promise.all([
       this.signAccessToken(user_id),

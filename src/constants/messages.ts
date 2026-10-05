@@ -273,3 +273,17 @@ export const VARIANT_MESSAGES = {
   UPDATE_SUCCESS: 'Update variant success',
   DELETE_SUCCESS: 'Delete variant success'
 } as const
+
+export const ADMIN_USER_MESSAGES = {
+  ROLE_IS_INVALID: 'role must be 0 (Admin), 1 (Staff) or 2 (User)',
+  VERIFY_IS_INVALID: 'verify must be 0 (Unverified), 1 (Verified) or 2 (Banned)',
+  NOT_FOUND: 'User not found',
+  CANNOT_CHANGE_SELF: 'You cannot ban yourself or change your own role',
+  NOT_BANNED: 'This user is not banned',
+  ALREADY_BANNED: 'This user is already banned',
+  GET_LIST_SUCCESS: 'Get users success',
+  GET_SUCCESS: 'Get user success',
+  BAN_SUCCESS: 'Ban user success',
+  UNBAN_SUCCESS: 'Unban user success',
+  UPDATE_ROLE_SUCCESS: 'Update user role success'
+} as const
