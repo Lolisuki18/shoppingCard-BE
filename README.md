@@ -36,16 +36,16 @@ Giá tiền là số nguyên (VND). Danh sách phân trang trả `result: { item
 
 ### Danh mục & sản phẩm (public xem, Admin/Staff quản lý)
 
-| Method & path                                    | Quyền        | Ghi chú                                                                                                                                 |
-| ------------------------------------------------ | ------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /categories`, `GET /categories/:id`         | public       | Kèm `product_count`                                                                                                                     |
-| `POST /categories`, `PATCH /categories/:id`      | Admin, Staff |                                                                                                                                         |
-| `DELETE /categories/:id`                         | Admin        | 409 nếu còn sản phẩm                                                                                                                    |
-| `GET /products`                                  | public       | Query: `page, limit, search, category_id, min_price, max_price, sort` (`newest`/`price_asc`/`price_desc`/`name`). Chỉ sản phẩm đang bán |
-| `GET /products/:id`                              | public       |                                                                                                                                         |
-| `POST /products`, `PATCH /products/:id`          | Admin, Staff | `images` là mảng URL (lấy từ `POST /medias/upload-image`)                                                                               |
-| `DELETE /products/:id`                           | Admin        | Đơn cũ vẫn giữ tên/giá nhờ bản chụp trong `order_items`                                                                                 |
-| `GET /admin/products`, `GET /admin/products/:id` | Admin, Staff | Thấy cả sản phẩm đang ẩn (`is_active=false`)                                                                                            |
+| Method & path                                    | Quyền        | Ghi chú                                                                                                                                          |
+| ------------------------------------------------ | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /categories`, `GET /categories/:id`         | public       | Kèm `product_count`                                                                                                                              |
+| `POST /categories`, `PATCH /categories/:id`      | Admin, Staff |                                                                                                                                                  |
+| `DELETE /categories/:id`                         | Admin        | 409 nếu còn sản phẩm                                                                                                                             |
+| `GET /products`                                  | public       | Query: `page, limit, search, category_id, min_price, max_price, sort` (`newest`/`price_asc`/`price_desc`/`name`/`rating`). Chỉ sản phẩm đang bán |
+| `GET /products/:id`                              | public       |                                                                                                                                                  |
+| `POST /products`, `PATCH /products/:id`          | Admin, Staff | `images` là mảng URL (lấy từ `POST /medias/upload-image`)                                                                                        |
+| `DELETE /products/:id`                           | Admin        | Đơn cũ vẫn giữ tên/giá nhờ bản chụp trong `order_items`                                                                                          |
+| `GET /admin/products`, `GET /admin/products/:id` | Admin, Staff | Thấy cả sản phẩm đang ẩn (`is_active=false`)                                                                                                     |
 
 ### Giỏ hàng — `/cart` (cần đăng nhập + đã verify email)
 
@@ -73,6 +73,18 @@ Chưa có thanh toán online (đơn mặc định là thanh toán khi nhận hà
 | `GET /admin/coupons` (`?search=&is_active=`), `GET /admin/coupons/:id` | Admin, Staff |                                                                                                                                                                                                          |
 | `POST /admin/coupons`, `PATCH /admin/coupons/:id`                      | Admin, Staff | `code, discount_type (Percent/Fixed), discount_value, min_order_amount?, max_discount_amount?, usage_limit?, per_user_limit? (mặc định 1), starts_at?, expires_at?, is_active?`. `null` = không giới hạn |
 | `DELETE /admin/coupons/:id`                                            | Admin        | Đơn cũ vẫn giữ `coupon_code`/`discount_amount`                                                                                                                                                           |
+
+### Đánh giá & yêu thích
+
+Sản phẩm có thêm `rating_avg` (0 nếu chưa có đánh giá) và `rating_count`.
+
+| Method & path                                       | Quyền        | Ghi chú                                                                                                   |
+| --------------------------------------------------- | ------------ | --------------------------------------------------------------------------------------------------------- |
+| `GET /products/:id/reviews`                         | public       | Phân trang; kèm `rating_avg`, `rating_count`                                                              |
+| `POST /products/:id/reviews {rating 1-5, comment?}` | Đã đăng nhập | Chỉ khi đã có đơn `Delivered` chứa sản phẩm (403 nếu chưa). Mỗi khách 1 đánh giá/sản phẩm (409 nếu trùng) |
+| `PATCH /reviews/:id`, `DELETE /reviews/:id`         | Đã đăng nhập | Chủ đánh giá; Admin/Staff xoá được mọi đánh giá                                                           |
+| `GET /wishlist`, `POST /wishlist {product_id}`      | Đã đăng nhập | Thêm lần nữa không lỗi; sản phẩm đang ẩn không hiện trong danh sách                                       |
+| `DELETE /wishlist/:product_id`                      | Đã đăng nhập | 404 nếu không có trong danh sách                                                                          |
 
 ### Phân quyền
 

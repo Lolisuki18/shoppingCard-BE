@@ -27,7 +27,7 @@ export interface ProductReqBody {
 }
 export type UpdateProductReqBody = Partial<ProductReqBody>
 
-export type ProductSort = 'newest' | 'price_asc' | 'price_desc' | 'name'
+export type ProductSort = 'newest' | 'price_asc' | 'price_desc' | 'name' | 'rating'
 export interface ProductListQuery extends PaginationQuery {
   search?: string
   category_id?: string
@@ -81,4 +81,16 @@ export interface ValidateCouponReqBody {
 export interface CouponListQuery extends PaginationQuery {
   search?: string
   is_active?: string
+}
+
+//review
+export interface CreateReviewReqBody {
+  rating: number
+  comment?: string
+}
+export type UpdateReviewReqBody = Partial<CreateReviewReqBody>
+
+//wishlist
+export interface AddToWishlistReqBody {
+  product_id: string
 }

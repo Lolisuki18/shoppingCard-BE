@@ -30,6 +30,8 @@ model User {
   refresh_tokens        RefreshToken[]
   cart_items            CartItem[]
   orders                Order[]
+  reviews               Review[]
+  wishlist_items        WishlistItem[]
 
   @@map("users")
 }
@@ -72,20 +74,24 @@ model Category {
 }
 
 model Product {
-  id          String      @id @default(uuid()) @db.Uuid
-  category_id String      @db.Uuid
-  name        String
-  slug        String      @unique
-  description String      @default("")
-  price       Int
-  stock       Int         @default(0)
-  images      String[]    @default([])
-  is_active   Boolean     @default(true)
-  created_at  DateTime    @default(now())
-  updated_at  DateTime    @updatedAt
-  category    Category    @relation(fields: [category_id], references: [id], onDelete: Restrict)
-  cart_items  CartItem[]
-  order_items OrderItem[]
+  id             String         @id @default(uuid()) @db.Uuid
+  category_id    String         @db.Uuid
+  name           String
+  slug           String         @unique
+  description    String         @default("")
+  price          Int
+  stock          Int            @default(0)
+  images         String[]       @default([])
+  is_active      Boolean        @default(true)
+  rating_avg     Float          @default(0) // điểm trung bình (0 nếu chưa có đánh giá), tính lại mỗi khi review đổi
+  rating_count   Int            @default(0)
+  created_at     DateTime       @default(now())
+  updated_at     DateTime       @updatedAt
+  category       Category       @relation(fields: [category_id], references: [id], onDelete: Restrict)
+  cart_items     CartItem[]
+  order_items    OrderItem[]
+  reviews        Review[]
+  wishlist_items WishlistItem[]
 
   @@index([category_id])
   @@index([is_active, created_at])
@@ -146,6 +152,7 @@ model OrderItem {
   @@index([order_id])
   @@map("order_items")
 }
+
 // Mã giảm giá. used_count tăng khi tạo đơn và giảm lại khi đơn bị huỷ
 model Coupon {
   id                  String       @id @default(uuid()) @db.Uuid
@@ -166,4 +173,34 @@ model Coupon {
   orders              Order[]
 
   @@map("coupons")
+}
+
+// Mỗi khách đánh giá 1 sản phẩm tối đa 1 lần (và phải từng nhận hàng sản phẩm đó)
+model Review {
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String   @db.Uuid
+  product_id String   @db.Uuid
+  rating     Int // 1..5
+  comment    String   @default("")
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, product_id])
+  @@index([product_id, created_at])
+  @@map("reviews")
+}
+
+model WishlistItem {
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String   @db.Uuid
+  product_id String   @db.Uuid
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, product_id])
+  @@index([user_id, created_at])
+  @@map("wishlist_items")
 }

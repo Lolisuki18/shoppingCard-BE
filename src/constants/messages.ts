@@ -129,7 +129,7 @@ export const PRODUCT_MESSAGES = {
   CATEGORY_ID_IS_REQUIRED: 'Category id is required',
   MIN_PRICE_MUST_BE_A_NON_NEGATIVE_INTEGER: 'min_price must be a non-negative integer',
   MAX_PRICE_MUST_BE_A_NON_NEGATIVE_INTEGER: 'max_price must be a non-negative integer',
-  SORT_IS_INVALID: 'sort must be one of: newest, price_asc, price_desc, name',
+  SORT_IS_INVALID: 'sort must be one of: newest, price_asc, price_desc, name, rating',
   NOT_FOUND: 'Product not found',
   GET_SUCCESS: 'Get product success',
   GET_LIST_SUCCESS: 'Get products success',
@@ -198,4 +198,25 @@ export const COUPON_MESSAGES = {
   CREATE_SUCCESS: 'Create coupon success',
   UPDATE_SUCCESS: 'Update coupon success',
   DELETE_SUCCESS: 'Delete coupon success'
+} as const
+
+export const REVIEW_MESSAGES = {
+  RATING_MUST_BE_FROM_1_TO_5: 'Rating must be an integer from 1 to 5',
+  COMMENT_LENGTH_MUST_BE_LESS_THAN_2000: 'Comment must be a string shorter than 2000 characters',
+  MUST_PURCHASE_FIRST: 'You can only review products from a delivered order',
+  ALREADY_REVIEWED: 'You have already reviewed this product, edit your review instead',
+  NOT_FOUND: 'Review not found',
+  GET_LIST_SUCCESS: 'Get reviews success',
+  CREATE_SUCCESS: 'Create review success',
+  UPDATE_SUCCESS: 'Update review success',
+  DELETE_SUCCESS: 'Delete review success'
+} as const
+
+export const WISHLIST_MESSAGES = {
+  PRODUCT_ID_IS_INVALID: 'product_id must be a valid UUID',
+  PRODUCT_NOT_AVAILABLE: 'Product is not available',
+  ITEM_NOT_FOUND: 'Product is not in your wishlist',
+  GET_LIST_SUCCESS: 'Get wishlist success',
+  ADD_SUCCESS: 'Add to wishlist success',
+  REMOVE_SUCCESS: 'Remove from wishlist success'
 } as const

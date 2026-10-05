@@ -19,6 +19,8 @@ const orderBySort = (sort?: string): Prisma.ProductOrderByWithRelationInput[] =>
       return [{ price: 'asc' }, { id: 'asc' }]
     case 'price_desc':
       return [{ price: 'desc' }, { id: 'asc' }]
+    case 'rating':
+      return [{ rating_avg: 'desc' }, { rating_count: 'desc' }, { id: 'asc' }]
     case 'name':
       return [{ name: 'asc' }, { id: 'asc' }]
     default:

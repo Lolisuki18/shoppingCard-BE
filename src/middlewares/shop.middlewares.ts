@@ -7,7 +7,9 @@ import {
   COMMON_MESSAGES,
   COUPON_MESSAGES,
   ORDER_MESSAGES,
-  PRODUCT_MESSAGES
+  PRODUCT_MESSAGES,
+  REVIEW_MESSAGES,
+  WISHLIST_MESSAGES
 } from '~/constants/messages'
 import { validate } from '~/utils/validation'
 
@@ -146,7 +148,10 @@ export const productListValidator = validate(
     sort: {
       in: ['query'],
       optional: true,
-      isIn: { options: [['newest', 'price_asc', 'price_desc', 'name']], errorMessage: PRODUCT_MESSAGES.SORT_IS_INVALID }
+      isIn: {
+        options: [['newest', 'price_asc', 'price_desc', 'name', 'rating']],
+        errorMessage: PRODUCT_MESSAGES.SORT_IS_INVALID
+      }
     }
   })
 )
@@ -282,4 +287,30 @@ export const orderListValidator = validate(
       isIn: { options: [statusValues], errorMessage: ORDER_MESSAGES.STATUS_IS_INVALID }
     }
   })
+)
+
+//---------------- review ----------------
+const ratingSchema: ParamSchema = {
+  isInt: { options: { min: 1, max: 5 }, errorMessage: REVIEW_MESSAGES.RATING_MUST_BE_FROM_1_TO_5 },
+  toInt: true
+}
+const reviewCommentSchema: ParamSchema = {
+  optional: true,
+  isString: { errorMessage: REVIEW_MESSAGES.COMMENT_LENGTH_MUST_BE_LESS_THAN_2000 },
+  trim: true,
+  isLength: { options: { max: 2000 }, errorMessage: REVIEW_MESSAGES.COMMENT_LENGTH_MUST_BE_LESS_THAN_2000 }
+}
+export const createReviewValidator = validate(
+  checkSchema({ rating: ratingSchema, comment: reviewCommentSchema }, ['body'])
+)
+export const updateReviewValidator = validate(
+  checkSchema({ rating: { optional: true, ...ratingSchema }, comment: reviewCommentSchema }, ['body'])
+)
+
+//---------------- wishlist ----------------
+export const addToWishlistValidator = validate(
+  checkSchema({ product_id: uuidSchema(WISHLIST_MESSAGES.PRODUCT_ID_IS_INVALID) }, ['body'])
+)
+export const wishlistItemParamValidator = validate(
+  checkSchema({ product_id: { in: ['params'], ...uuidSchema(WISHLIST_MESSAGES.PRODUCT_ID_IS_INVALID) } })
 )

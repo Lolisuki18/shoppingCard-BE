@@ -51,6 +51,14 @@ class DatabaseService {
     return this.client.order
   }
 
+  get reviews() {
+    return this.client.review
+  }
+
+  get wishlistItems() {
+    return this.client.wishlistItem
+  }
+
   get coupons() {
     return this.client.coupon
   }
