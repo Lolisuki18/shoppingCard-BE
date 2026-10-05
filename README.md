@@ -21,7 +21,7 @@ Gửi qua SMTP (nodemailer): xác thực email, quên mật khẩu, xác nhận 
 
 - **Log:** `production` in mỗi log một dòng JSON (`LOG_LEVEL=debug|info|warn|error`). `LOG_REQUESTS=true` (mặc định ở production) ghi mỗi request: `request_id, method, url (bỏ query), status, duration_ms, user_id`. Mỗi response có header `X-Request-Id` (dùng lại id từ proxy nếu hợp lệ), cũng có trong log lỗi 500 để lần theo.
 - **Healthcheck:** `GET /health` (200 / 503 khi mất database). Tắt êm khi nhận `SIGTERM`/`SIGINT`.
-- **Ảnh upload:** URL ảnh/video dựng từ `API_URL`. Xoá sản phẩm hoặc gỡ ảnh khỏi sản phẩm thì file ảnh trong `uploads/images` được xoá nếu không còn nơi nào dùng (sản phẩm khác, avatar/cover của user, hoặc bản chụp trong đơn hàng cũ thì được giữ lại). Ảnh upload nhưng chưa từng gắn vào đâu sẽ không tự dọn.
+- **Ảnh upload:** URL ảnh/video dựng từ `API_URL`. Xoá sản phẩm hoặc gỡ ảnh khỏi sản phẩm thì file ảnh trong `uploads/images` được xoá nếu không còn nơi nào dùng (sản phẩm khác, avatar/cover của user, hoặc bản chụp trong đơn hàng cũ thì được giữ lại). Ảnh upload nhưng quá `ORPHAN_UPLOAD_MAX_AGE_HOURS` giờ (mặc định 24, `0` = tắt) chưa gắn vào sản phẩm, avatar/cover hay đơn hàng nào sẽ bị job (chạy mỗi giờ) xoá, cùng file lỗi trong thư mục tạm; so khớp theo tên file nên đổi `API_URL` không làm xoá nhầm. Video không bị tự xoá (DB không lưu video nào đang dùng).
 
 ## Test
 
@@ -29,6 +29,7 @@ Test tích hợp chạy trên PostgreSQL thật (vitest + supertest), phủ đă
 
 ```bash
 createdb shoppingcard_test   # hoặc: docker compose exec postgres createdb -U shoppingcard shoppingcard_test
+npm run lint                 # ESLint (flat config, kèm kiểm tra định dạng prettier); lint:fix để tự sửa
 npm test                     # dùng TEST_DATABASE_URL, mặc định postgresql://shoppingcard:shoppingcard@localhost:5433/shoppingcard_test
 ```
 
@@ -39,6 +40,7 @@ npm test                     # dùng TEST_DATABASE_URL, mặc định postgresql
 - `helmet`, CORS theo `CORS_ORIGIN` (mặc định `CLIENT_URL`), body JSON tối đa 100kb.
 - Giới hạn tần suất theo IP (`express-rate-limit`, đếm trong bộ nhớ): toàn API 300 req/phút; đăng nhập 10 lần sai/15 phút; đăng ký 10/giờ; quên mật khẩu / gửi lại mail / reset mật khẩu 5/15 phút. Trả `429`. Sau reverse proxy đặt `TRUST_PROXY`.
 - Lỗi 500 chỉ trả `{ message: "Internal server error" }`, chi tiết ghi vào log (đặt `DEBUG_ERRORS=true` khi dev nếu muốn thấy). Đường dẫn không tồn tại trả 404, JSON sai cú pháp trả 400, body quá lớn trả 413.
+- `POST /users/forgot-password` luôn trả 200 dù email có đăng ký hay không (không cho dò email); việc tạo token + gửi mail chạy nền. Lưu ý đăng ký trùng email vẫn trả 409 nên không tránh được hoàn toàn việc dò email qua form đăng ký.
 - `/static/*` chỉ phục vụ file nằm trực tiếp trong thư mục upload (đã chặn path traversal).
 
 ## Lệnh DB

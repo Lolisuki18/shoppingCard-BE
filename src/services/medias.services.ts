@@ -1,6 +1,6 @@
 import { Request } from 'express'
 import sharp from 'sharp'
-import { UPLOAD_IMAGE_DIR } from '~/constants/dir'
+import { UPLOAD_IMAGE_DIR, UPLOAD_IMAGE_TEMP_DIR } from '~/constants/dir'
 import { getNameFromFullNameFile, handleUploadImage, handleUploadVideo } from '~/utils/file'
 import fs from 'fs'
 import path from 'path'
@@ -106,6 +106,55 @@ export const deleteUnusedImages = async (urls: string[]) => {
         logger.warn('không xoá được ảnh không còn dùng', { url, error })
     }
   }
+}
+
+//ảnh upload lên nhưng KHÔNG được gắn vào đâu (sản phẩm, avatar/cover, bản chụp trong đơn hàng) và đã quá olderThanHours giờ
+//thì xoá; file lỗi còn sót trong thư mục tạm cũng bị xoá. Trả về số file đã xoá.
+//So khớp theo TÊN FILE (không theo host trong URL) để API_URL từng đổi cũng không làm xoá nhầm ảnh đang dùng.
+//Chỉ xử lý ảnh: video không được lưu ở đâu trong DB nên không có cách biết video nào còn dùng -> không đụng tới
+export const deleteOrphanUploads = async (olderThanHours: number) => {
+  const cutoff = Date.now() - olderThanHours * 60 * 60 * 1000
+  let deleted = 0
+  const oldFiles = async (dir: string) => {
+    const entries = await fs.promises.readdir(dir, { withFileTypes: true }).catch(() => [])
+    const result: string[] = []
+    for (const entry of entries) {
+      if (!entry.isFile() || entry.name.startsWith('.')) continue
+      const stat = await fs.promises.stat(path.join(dir, entry.name)).catch(() => undefined)
+      if (stat && stat.mtimeMs < cutoff) result.push(entry.name)
+    }
+    return result
+  }
+  const remove = async (dir: string, name: string) => {
+    try {
+      await fs.promises.unlink(path.join(dir, name))
+      deleted++
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT')
+        logger.warn('không xoá được file upload mồ côi', { name, error })
+    }
+  }
+
+  //thư mục tạm: file ở đây là upload dở dang / lỗi, quá hạn thì xoá
+  for (const name of await oldFiles(UPLOAD_IMAGE_TEMP_DIR)) await remove(UPLOAD_IMAGE_TEMP_DIR, name)
+
+  const candidates = await oldFiles(UPLOAD_IMAGE_DIR)
+  const BATCH = 500
+  for (let i = 0; i < candidates.length; i += BATCH) {
+    const names = candidates.slice(i, i + BATCH)
+    const rows = await databaseService.$queryRaw<{ name: string }[]>`
+      SELECT DISTINCT substring(u FROM '/static/image/([^/?#]+)$') AS name
+      FROM (
+        SELECT unnest(images) AS u FROM products
+        UNION ALL SELECT avatar FROM users
+        UNION ALL SELECT cover_photo FROM users
+        UNION ALL SELECT product_image FROM order_items
+      ) refs
+      WHERE u LIKE '%/static/image/%' AND substring(u FROM '/static/image/([^/?#]+)$') = ANY(${names}::text[])`
+    const used = new Set(rows.map((row) => row.name))
+    for (const name of names) if (!used.has(name)) await remove(UPLOAD_IMAGE_DIR, name)
+  }
+  return deleted
 }
 
 const mediasService = new MediasService()

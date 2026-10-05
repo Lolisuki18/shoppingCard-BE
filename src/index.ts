@@ -3,6 +3,7 @@ import dotenv from 'dotenv'
 import app from './app'
 import databaseService from './services/database.services'
 import { startOrderJobs } from './jobs/orders.jobs'
+import { startUploadJobs } from './jobs/uploads.jobs'
 import { initFolder } from './utils/file'
 import { logger } from './utils/logger'
 
@@ -13,7 +14,8 @@ const bootstrap = async () => {
   await databaseService.connect() //kết nối PostgreSQL (qua Prisma), lỗi thì dừng luôn thay vì chạy mà không có DB
   initFolder() // mỗi lần sever chạy thì nó sẽ tạo luôn thư mục upload cho mình luôn
 
-  const stopJobs = startOrderJobs()
+  const stopOrderJobs = startOrderJobs()
+  const stopUploadJobs = startUploadJobs()
   const server = app.listen(PORT, () => {
     logger.info(`SERVER BE đang chạy trên port : ${PORT}`)
   })
@@ -21,7 +23,8 @@ const bootstrap = async () => {
   //tắt êm: ngừng nhận request mới, đợi request đang chạy xong rồi mới ngắt DB
   const shutdown = (signal: string) => {
     logger.info(`nhận ${signal}, đang tắt server`)
-    stopJobs()
+    stopOrderJobs()
+    stopUploadJobs()
     server.close(async () => {
       await databaseService.disconnect()
       process.exit(0)

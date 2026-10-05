@@ -1,11 +1,11 @@
 import fs from 'fs'
 import path from 'path'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { UPLOAD_IMAGE_DIR } from '~/constants/dir'
+import { UPLOAD_IMAGE_DIR, UPLOAD_IMAGE_TEMP_DIR } from '~/constants/dir'
 import { USER_ROLE } from '~/constants/enums'
-import { localImageFilename } from '~/services/medias.services'
+import { deleteOrphanUploads, localImageFilename } from '~/services/medias.services'
 import { apiUrl } from '~/utils/publicUrl'
-import { api, createCatalog, createSession, resetDb, shipping } from './helpers'
+import { api, createCatalog, createSession, prisma, resetDb, shipping } from './helpers'
 
 let admin: Awaited<ReturnType<typeof createSession>>
 let catalog: Awaited<ReturnType<typeof createCatalog>>
@@ -91,5 +91,76 @@ describe('request id', () => {
     expect(forwarded.headers['x-request-id']).toBe('abc-123')
     const bad = await api.get('/health').set('X-Request-Id', 'bad id with spaces!')
     expect(bad.headers['x-request-id']).not.toBe('bad id with spaces!')
+  })
+})
+
+describe('dọn ảnh upload mồ côi (chưa gắn vào đâu)', () => {
+  const HOUR = 3600 * 1000
+  //tạo file ảnh giả có tuổi = ageHours giờ
+  const aged = (ageHours: number, dir = UPLOAD_IMAGE_DIR) => {
+    const name = `orphan-${Date.now()}-${Math.random().toString(36).slice(2)}.jpeg`
+    const file = path.join(dir, name)
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(file, 'x')
+    const when = new Date(Date.now() - ageHours * HOUR)
+    fs.utimesSync(file, when, when)
+    return { name, file, url: `${apiUrl()}/static/image/${name}` }
+  }
+
+  it('xoá ảnh quá hạn không ai dùng, giữ ảnh còn mới (đang trong thời gian chờ gắn vào sản phẩm)', async () => {
+    const old = aged(30)
+    const fresh = aged(1)
+    expect(await deleteOrphanUploads(24)).toBeGreaterThanOrEqual(1)
+    expect(fs.existsSync(old.file)).toBe(false)
+    expect(fs.existsSync(fresh.file)).toBe(true)
+    fs.unlinkSync(fresh.file)
+  })
+
+  it('giữ ảnh đang được sản phẩm, avatar, cover hoặc đơn hàng cũ dùng', async () => {
+    const forProduct = aged(48)
+    const forAvatar = aged(48)
+    const forCover = aged(48)
+    const forOrder = aged(48)
+    await newProduct([forProduct.url])
+    const user = await createSession()
+    await prisma.user.update({ where: { id: user.id }, data: { avatar: forAvatar.url, cover_photo: forCover.url } })
+    //ảnh nằm trong bản chụp đơn hàng của 1 sản phẩm đã bị xoá
+    const product = await newProduct([forOrder.url])
+    const buyer = await createSession()
+    await api.post('/cart/items').set(buyer.auth).send({ product_id: product.body.result.id, quantity: 1 })
+    await api.post('/orders').set(buyer.auth).send(shipping)
+    await prisma.product.delete({ where: { id: product.body.result.id } })
+
+    await deleteOrphanUploads(24)
+    for (const img of [forProduct, forAvatar, forCover, forOrder]) {
+      expect(fs.existsSync(img.file), img.name).toBe(true)
+      fs.unlinkSync(img.file)
+    }
+  })
+
+  it('API_URL từng đổi (URL trong DB có host khác) thì ảnh vẫn được coi là đang dùng', async () => {
+    const img = aged(48)
+    await newProduct([`https://domain-cu.example.com/static/image/${img.name}`])
+    await deleteOrphanUploads(24)
+    expect(fs.existsSync(img.file)).toBe(true)
+    fs.unlinkSync(img.file)
+  })
+
+  it('file lỗi quá hạn trong thư mục tạm bị xoá, thư mục con và video không bị đụng tới', async () => {
+    const oldTemp = aged(30, UPLOAD_IMAGE_TEMP_DIR)
+    const freshTemp = aged(1, UPLOAD_IMAGE_TEMP_DIR)
+    const videoDir = path.resolve('uploads/videos')
+    fs.mkdirSync(videoDir, { recursive: true })
+    const video = path.join(videoDir, `orphan-video-${Date.now()}.mp4`)
+    fs.writeFileSync(video, 'x')
+    fs.utimesSync(video, new Date(Date.now() - 100 * HOUR), new Date(Date.now() - 100 * HOUR))
+
+    await deleteOrphanUploads(24)
+    expect(fs.existsSync(oldTemp.file)).toBe(false)
+    expect(fs.existsSync(freshTemp.file)).toBe(true)
+    expect(fs.existsSync(UPLOAD_IMAGE_TEMP_DIR)).toBe(true)
+    expect(fs.existsSync(video)).toBe(true)
+    fs.unlinkSync(freshTemp.file)
+    fs.unlinkSync(video)
   })
 })
