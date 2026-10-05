@@ -1,7 +1,8 @@
 //các validator dùng chung cho nhóm API shop (category, product, cart, order)
-import { checkSchema, ParamSchema } from 'express-validator'
+import { checkSchema, CustomValidator, ParamSchema } from 'express-validator'
 import { DiscountType, OrderStatus } from '@prisma/client'
 import {
+  ADDRESS_MESSAGES,
   CART_MESSAGES,
   CATEGORY_MESSAGES,
   COMMON_MESSAGES,
@@ -242,25 +243,63 @@ export const couponListValidator = validate(
   })
 )
 
+//---------------- address ----------------
+const PHONE_REGEX = /^(0|\+84)\d{9,10}$/
+const addressFields = (isCreate: boolean): Record<string, ParamSchema> => {
+  const required = (schema: ParamSchema): ParamSchema => (isCreate ? schema : { optional: true, ...schema })
+  return {
+    name: required({
+      isString: { errorMessage: ADDRESS_MESSAGES.NAME_IS_REQUIRED },
+      trim: true,
+      isLength: { options: { min: 1, max: 100 }, errorMessage: ADDRESS_MESSAGES.NAME_IS_REQUIRED }
+    }),
+    phone: required({
+      isString: { errorMessage: ADDRESS_MESSAGES.PHONE_IS_INVALID },
+      trim: true,
+      matches: { options: PHONE_REGEX, errorMessage: ADDRESS_MESSAGES.PHONE_IS_INVALID }
+    }),
+    address: required({
+      isString: { errorMessage: ADDRESS_MESSAGES.ADDRESS_IS_REQUIRED },
+      trim: true,
+      isLength: { options: { min: 1, max: 300 }, errorMessage: ADDRESS_MESSAGES.ADDRESS_IS_REQUIRED }
+    }),
+    is_default: {
+      optional: true,
+      isBoolean: { options: { strict: true }, errorMessage: ADDRESS_MESSAGES.IS_DEFAULT_MUST_BE_A_BOOLEAN }
+    }
+  }
+}
+export const createAddressValidator = validate(checkSchema(addressFields(true), ['body']))
+export const updateAddressValidator = validate(checkSchema(addressFields(false), ['body']))
+
 //---------------- order ----------------
+//chỉ bắt buộc các trường shipping_* khi KHÔNG có address_id: điều kiện `if` gắn vào validator đầu tiên (isString),
+//khi điều kiện sai thì cả chuỗi kiểm tra phía sau bị bỏ qua
+const noAddressId: CustomValidator = (value, { req }) => !req.body?.address_id
+const unlessAddressId = (schema: ParamSchema): ParamSchema => ({
+  ...schema,
+  isString: { ...(schema.isString as object), if: noAddressId }
+})
 export const createOrderValidator = validate(
   checkSchema(
     {
-      shipping_name: {
+      address_id: { optional: true, ...uuidSchema(ADDRESS_MESSAGES.ID_IS_INVALID) },
+      //có address_id thì lấy thông tin giao hàng từ sổ địa chỉ, không bắt buộc 3 trường shipping_*
+      shipping_name: unlessAddressId({
         isString: { errorMessage: ORDER_MESSAGES.SHIPPING_NAME_IS_REQUIRED },
         trim: true,
         isLength: { options: { min: 1, max: 100 }, errorMessage: ORDER_MESSAGES.SHIPPING_NAME_IS_REQUIRED }
-      },
-      shipping_phone: {
+      }),
+      shipping_phone: unlessAddressId({
         isString: { errorMessage: ORDER_MESSAGES.SHIPPING_PHONE_IS_INVALID },
         trim: true,
-        matches: { options: /^(0|\+84)\d{9,10}$/, errorMessage: ORDER_MESSAGES.SHIPPING_PHONE_IS_INVALID }
-      },
-      shipping_address: {
+        matches: { options: PHONE_REGEX, errorMessage: ORDER_MESSAGES.SHIPPING_PHONE_IS_INVALID }
+      }),
+      shipping_address: unlessAddressId({
         isString: { errorMessage: ORDER_MESSAGES.SHIPPING_ADDRESS_IS_REQUIRED },
         trim: true,
         isLength: { options: { min: 1, max: 300 }, errorMessage: ORDER_MESSAGES.SHIPPING_ADDRESS_IS_REQUIRED }
-      },
+      }),
       note: {
         optional: true,
         isString: { errorMessage: ORDER_MESSAGES.NOTE_LENGTH_MUST_BE_LESS_THAN_500 },

@@ -33,6 +33,8 @@ model User {
   reviews               Review[]
   wishlist_items        WishlistItem[]
 
+  addresses Address[]
+
   @@map("users")
 }
 
@@ -203,4 +205,20 @@ model WishlistItem {
   @@unique([user_id, product_id])
   @@index([user_id, created_at])
   @@map("wishlist_items")
+}
+
+// Sổ địa chỉ giao hàng. Mỗi user tối đa 10 địa chỉ, đúng 1 địa chỉ mặc định (nếu có địa chỉ)
+model Address {
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String   @db.Uuid
+  name       String // người nhận
+  phone      String
+  address    String
+  is_default Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("addresses")
 }

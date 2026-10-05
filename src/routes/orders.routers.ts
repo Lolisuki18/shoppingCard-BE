@@ -20,7 +20,14 @@ orderRouter.use(accessTokenValidation, requireVerifiedUser)
 //tạo đơn từ giỏ hàng hiện tại (chưa có thanh toán online -> thanh toán khi nhận hàng)
 orderRouter.post(
   '/',
-  filterMiddleware<CreateOrderReqBody>(['shipping_name', 'shipping_phone', 'shipping_address', 'note', 'coupon_code']),
+  filterMiddleware<CreateOrderReqBody>([
+    'address_id',
+    'shipping_name',
+    'shipping_phone',
+    'shipping_address',
+    'note',
+    'coupon_code'
+  ]),
   createOrderValidator,
   wrapAsync(createOrderController)
 )

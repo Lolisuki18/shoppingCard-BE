@@ -238,3 +238,17 @@ export const STATS_MESSAGES = {
   TOP_PRODUCTS_SUCCESS: 'Get top products success',
   LOW_STOCK_SUCCESS: 'Get low stock products success'
 } as const
+
+export const ADDRESS_MESSAGES = {
+  NAME_IS_REQUIRED: 'Recipient name is required (1 - 100 characters)',
+  PHONE_IS_INVALID: 'Phone is invalid',
+  ADDRESS_IS_REQUIRED: 'Address is required (1 - 300 characters)',
+  IS_DEFAULT_MUST_BE_A_BOOLEAN: 'is_default must be a boolean',
+  ID_IS_INVALID: 'address_id must be a valid UUID',
+  LIMIT_REACHED: 'You can save at most 10 addresses',
+  NOT_FOUND: 'Address not found',
+  GET_LIST_SUCCESS: 'Get addresses success',
+  CREATE_SUCCESS: 'Create address success',
+  UPDATE_SUCCESS: 'Update address success',
+  DELETE_SUCCESS: 'Delete address success'
+} as const

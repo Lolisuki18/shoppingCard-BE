@@ -47,9 +47,11 @@ export interface UpdateCartItemReqBody {
 
 //order
 export interface CreateOrderReqBody {
-  shipping_name: string
-  shipping_phone: string
-  shipping_address: string
+  //chọn 1 trong 2: address_id (địa chỉ trong sổ địa chỉ) hoặc nhập thẳng 3 trường shipping_*
+  address_id?: string
+  shipping_name?: string
+  shipping_phone?: string
+  shipping_address?: string
   note?: string
   coupon_code?: string
 }
@@ -109,3 +111,12 @@ export interface TopProductsQuery extends StatsRangeQuery {
 export interface LowStockQuery extends PaginationQuery {
   threshold?: any
 }
+
+//address
+export interface AddressReqBody {
+  name: string
+  phone: string
+  address: string
+  is_default?: boolean
+}
+export type UpdateAddressReqBody = Partial<AddressReqBody>

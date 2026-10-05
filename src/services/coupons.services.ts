@@ -5,6 +5,7 @@ import { COUPON_MESSAGES } from '~/constants/messages'
 import { ErrorWithStatus } from '~/models/Errors'
 import { CouponListQuery, CouponReqBody, UpdateCouponReqBody } from '~/models/requests/Shop.requests'
 import { buildPage, getPagination } from '~/utils/pagination'
+import { lockUserRow } from '~/utils/locks'
 import { isPrismaError } from '~/utils/prismaErrors'
 
 type Tx = Prisma.TransactionClient
@@ -78,7 +79,7 @@ class CouponsServices {
   //dùng khi tạo đơn (chạy trong transaction của đơn): kiểm tra + giữ 1 lượt dùng
   async redeem(tx: Tx, user_id: string, code: string, subtotal: number) {
     //khoá dòng user để các đơn song song của cùng 1 khách xếp hàng -> per_user_limit không bị vượt
-    await tx.$queryRaw`SELECT id FROM users WHERE id = ${user_id}::uuid FOR UPDATE`
+    await lockUserRow(tx, user_id)
     const coupon = await tx.coupon.findUnique({ where: { code } })
     if (!coupon) throw couponNotFound()
     await assertApplicable(tx.order, coupon, user_id, subtotal)

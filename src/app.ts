@@ -15,6 +15,7 @@ import orderRouter from './routes/orders.routers'
 import couponRouter from './routes/coupons.routers'
 import reviewRouter from './routes/reviews.routers'
 import wishlistRouter from './routes/wishlist.routers'
+import addressRouter from './routes/addresses.routers'
 import adminRouter from './routes/admin.routers'
 
 dotenv.config()
@@ -50,6 +51,7 @@ export const createApp = () => {
   app.use('/coupons', couponRouter)
   app.use('/reviews', reviewRouter)
   app.use('/wishlist', wishlistRouter)
+  app.use('/addresses', addressRouter)
   app.use('/admin', adminRouter)
 
   app.use(notFoundHandler)

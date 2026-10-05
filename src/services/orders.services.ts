@@ -1,7 +1,7 @@
 import { OrderStatus, Prisma } from '@prisma/client'
 import databaseService from './database.services'
 import HTTP_STATUS from '~/constants/httpStatus'
-import { ORDER_MESSAGES } from '~/constants/messages'
+import { ADDRESS_MESSAGES, ORDER_MESSAGES } from '~/constants/messages'
 import { ErrorWithStatus } from '~/models/Errors'
 import { CreateOrderReqBody, OrderListQuery } from '~/models/requests/Shop.requests'
 import { buildPage, getPagination } from '~/utils/pagination'
@@ -72,6 +72,7 @@ class OrdersServices {
         if (count === 0) throw conflict(ORDER_MESSAGES.NOT_ENOUGH_STOCK)
       }
 
+      const shipping = await this.resolveShipping(tx, user_id, body)
       const subtotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0)
       const coupon = body.coupon_code
         ? await couponsServices.redeem(tx, user_id, body.coupon_code, subtotal)
@@ -84,9 +85,9 @@ class OrdersServices {
           coupon_id: coupon.coupon_id,
           coupon_code: coupon.coupon_code,
           discount_amount: coupon.discount_amount,
-          shipping_name: body.shipping_name,
-          shipping_phone: body.shipping_phone,
-          shipping_address: body.shipping_address,
+          shipping_name: shipping.name,
+          shipping_phone: shipping.phone,
+          shipping_address: shipping.address,
           note: body.note ?? '',
           items: {
             create: cartItems.map((item) => ({
@@ -103,6 +104,20 @@ class OrdersServices {
       await tx.cartItem.deleteMany({ where: { user_id } })
       return order
     })
+  }
+
+  //thông tin giao hàng: lấy từ sổ địa chỉ (address_id) hoặc từ 3 trường shipping_* khách nhập (validator đã bắt buộc có 1 trong 2)
+  private async resolveShipping(tx: Tx, user_id: string, body: CreateOrderReqBody) {
+    if (body.address_id) {
+      const saved = await tx.address.findFirst({ where: { id: body.address_id, user_id } })
+      if (!saved) throw new ErrorWithStatus({ status: HTTP_STATUS.NOT_FOUND, message: ADDRESS_MESSAGES.NOT_FOUND })
+      return { name: saved.name, phone: saved.phone, address: saved.address }
+    }
+    return {
+      name: body.shipping_name as string,
+      phone: body.shipping_phone as string,
+      address: body.shipping_address as string
+    }
   }
 
   //user_id có giá trị: chỉ lấy đơn của user đó (khách hàng). Bỏ trống: lấy tất cả (Admin/Staff)

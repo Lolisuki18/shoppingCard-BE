@@ -76,6 +76,10 @@ Chưa có thanh toán online (đơn mặc định là thanh toán khi nhận hà
 
 Đơn `Pending` quá `ORDER_AUTO_CANCEL_HOURS` giờ (mặc định 48, `0` = tắt) chưa được xác nhận sẽ tự huỷ: trả hàng về kho, trả lượt dùng coupon và gửi mail cho khách. Job chạy mỗi 10 phút trong tiến trình server.
 
+### Sổ địa chỉ — `/addresses` (cần đăng nhập + đã verify email)
+
+`GET /addresses` (mặc định lên đầu), `POST /addresses {name, phone, address, is_default?}`, `PATCH /addresses/:id`, `DELETE /addresses/:id`. Tối đa 10 địa chỉ; địa chỉ đầu tiên tự là mặc định; đặt `is_default: true` để đổi mặc định; xoá địa chỉ mặc định thì địa chỉ mới nhất còn lại lên làm mặc định. Khi đặt hàng truyền `address_id` thay cho 3 trường `shipping_*`.
+
 ### Mã giảm giá
 
 Đơn có thêm `coupon_code`, `discount_amount`; `total_amount` là số tiền khách phải trả (đã trừ giảm giá). Mã không phân biệt hoa/thường. Huỷ đơn thì trả lại lượt dùng mã.

@@ -51,6 +51,10 @@ class DatabaseService {
     return this.client.order
   }
 
+  get addresses() {
+    return this.client.address
+  }
+
   get reviews() {
     return this.client.review
   }
