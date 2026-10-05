@@ -9,6 +9,7 @@ import { ErrorWithStatus } from '~/models/Errors'
 import HTTP_STATUS from '~/constants/httpStatus'
 import { AUTH_MESSAGES, USERS_MESSAGES } from '~/constants/messages'
 import mailServices from './mail.services'
+import { logger } from '~/utils/logger'
 import dotenv from 'dotenv'
 dotenv.config()
 
@@ -195,17 +196,22 @@ class UsersServices {
   async forgotPassword(email: string) {
     //dùng email tìm user lấy id tạo forgot_password_token
     const user = await databaseService.users.findUnique({ where: { email }, select: { id: true, name: true } })
+    //email không có trong hệ thống thì bỏ qua im lặng. Phần còn lại chạy nền (không await) để người ngoài
+    //không phân biệt được "có tài khoản" / "không có" qua thời gian phản hồi
     if (user) {
-      //ký forgot_password_token
-      const forgot_password_token = await this.signForgotPasswordToken(user.id)
-      //lưu vào database
-      await databaseService.users.update({
-        where: { id: user.id },
-        data: { forgot_password_token }
-      })
-      //gửi link đặt lại mật khẩu (trỏ về FE) cho người dùng
-      void mailServices.sendForgotPassword(email, user.name, forgot_password_token)
+      void this.issueResetToken(user.id, user.name, email).catch((error) =>
+        logger.error('không tạo/gửi được link đặt lại mật khẩu', { user_id: user.id, error })
+      )
     }
+  }
+
+  private async issueResetToken(user_id: string, name: string, email: string) {
+    //ký forgot_password_token
+    const forgot_password_token = await this.signForgotPasswordToken(user_id)
+    //lưu vào database
+    await databaseService.users.update({ where: { id: user_id }, data: { forgot_password_token } })
+    //gửi link đặt lại mật khẩu (trỏ về FE) cho người dùng
+    await mailServices.sendForgotPassword(email, name, forgot_password_token)
   }
   //reset password
   async resetPassword({ user_id, password }: { user_id: string; password: string }) {

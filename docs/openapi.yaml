@@ -119,7 +119,7 @@ paths:
   /users/forgot-password:
     post:
       tags: [Users]
-      summary: Quên mật khẩu (gửi link đặt lại vào email, 404 nếu email chưa đăng ký)
+      summary: Quên mật khẩu (gửi link đặt lại vào email). Luôn trả 200 dù email có đăng ký hay không
       requestBody:
         required: true
         content:
@@ -127,7 +127,6 @@ paths:
             schema: { type: object, required: [email], properties: { email: { type: string, format: email } } }
       responses:
         '200': { $ref: '#/components/responses/Message' }
-        '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
   /users/verify-forgot-password:
     post:

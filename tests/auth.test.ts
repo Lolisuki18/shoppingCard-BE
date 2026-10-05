@@ -59,6 +59,10 @@ describe('quên mật khẩu', () => {
     const { email } = await createUser()
     const forgot = await api.post('/users/forgot-password').send({ email })
     expect(forgot.status).toBe(200)
+    //token được tạo ở chạy nền sau khi đã trả response
+    await expect
+      .poll(async () => (await prisma.user.findUniqueOrThrow({ where: { email } })).forgot_password_token)
+      .not.toBe('')
     const { forgot_password_token } = await prisma.user.findUniqueOrThrow({ where: { email } })
     const reset = await api
       .post('/users/reset-password')
@@ -68,9 +72,14 @@ describe('quên mật khẩu', () => {
     await expect(login(email)).rejects.toThrow()
   })
 
-  it('email không tồn tại trả 404', async () => {
-    const res = await api.post('/users/forgot-password').send({ email: 'khong-co@test.com' })
-    expect(res.status).toBe(404)
+  it('email không tồn tại trả y hệt email có thật (không lộ email nào đã đăng ký)', async () => {
+    const { email } = await createUser()
+    const real = await api.post('/users/forgot-password').send({ email })
+    const fake = await api.post('/users/forgot-password').send({ email: 'khong-co@test.com' })
+    expect(fake.status).toBe(200)
+    expect(fake.status).toBe(real.status)
+    expect(fake.body).toEqual(real.body)
+    expect(await prisma.user.count({ where: { email: 'khong-co@test.com' } })).toBe(0)
   })
 })
 
