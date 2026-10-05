@@ -169,3 +169,33 @@ export const ORDER_MESSAGES = {
   CANCEL_SUCCESS: 'Cancel order success',
   UPDATE_STATUS_SUCCESS: 'Update order status success'
 } as const
+
+export const COUPON_MESSAGES = {
+  CODE_IS_INVALID: 'Coupon code must be 3 - 32 characters (letters, numbers, - or _)',
+  DESCRIPTION_LENGTH_MUST_BE_LESS_THAN_500: 'Coupon description must be a string shorter than 500 characters',
+  DISCOUNT_TYPE_IS_INVALID: 'discount_type must be one of: Percent, Fixed',
+  DISCOUNT_VALUE_MUST_BE_A_POSITIVE_INTEGER: 'discount_value must be a positive integer',
+  PERCENT_MUST_BE_FROM_1_TO_100: 'A Percent coupon must have discount_value from 1 to 100',
+  MIN_ORDER_AMOUNT_MUST_BE_A_NON_NEGATIVE_INTEGER: 'min_order_amount must be a non-negative integer',
+  MAX_DISCOUNT_AMOUNT_MUST_BE_A_POSITIVE_INTEGER: 'max_discount_amount must be a positive integer or null',
+  USAGE_LIMIT_MUST_BE_A_POSITIVE_INTEGER: 'usage_limit must be a positive integer or null',
+  PER_USER_LIMIT_MUST_BE_A_POSITIVE_INTEGER: 'per_user_limit must be a positive integer or null',
+  DATE_IS_INVALID: 'starts_at / expires_at must be an ISO 8601 date or null',
+  EXPIRES_MUST_BE_AFTER_STARTS: 'expires_at must be after starts_at',
+  IS_ACTIVE_MUST_BE_A_BOOLEAN: 'is_active must be a boolean',
+  CODE_ALREADY_EXISTS: 'Coupon code already exists',
+  NOT_FOUND: 'Coupon not found',
+  NOT_ACTIVE: 'This coupon is not active',
+  NOT_STARTED: 'This coupon is not valid yet',
+  EXPIRED: 'This coupon has expired',
+  USAGE_LIMIT_REACHED: 'This coupon has been fully redeemed',
+  PER_USER_LIMIT_REACHED: 'You have already used this coupon the maximum number of times',
+  MIN_ORDER_NOT_REACHED: 'Your order does not reach the minimum amount for this coupon',
+  CART_IS_EMPTY: 'Your cart is empty',
+  VALIDATE_SUCCESS: 'Coupon can be applied',
+  GET_SUCCESS: 'Get coupon success',
+  GET_LIST_SUCCESS: 'Get coupons success',
+  CREATE_SUCCESS: 'Create coupon success',
+  UPDATE_SUCCESS: 'Update coupon success',
+  DELETE_SUCCESS: 'Delete coupon success'
+} as const

@@ -11,6 +11,7 @@ import categoryRouter from './routes/categories.routers'
 import productRouter from './routes/products.routers'
 import cartRouter from './routes/carts.routers'
 import orderRouter from './routes/orders.routers'
+import couponRouter from './routes/coupons.routers'
 import adminRouter from './routes/admin.routers'
 
 dotenv.config()
@@ -29,6 +30,7 @@ app.use('/categories', categoryRouter)
 app.use('/products', productRouter)
 app.use('/cart', cartRouter)
 app.use('/orders', orderRouter)
+app.use('/coupons', couponRouter)
 app.use('/admin', adminRouter)
 //http://localhost:3000/users/login body{email, password}
 

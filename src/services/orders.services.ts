@@ -5,6 +5,7 @@ import { ORDER_MESSAGES } from '~/constants/messages'
 import { ErrorWithStatus } from '~/models/Errors'
 import { CreateOrderReqBody, OrderListQuery } from '~/models/requests/Shop.requests'
 import { buildPage, getPagination } from '~/utils/pagination'
+import couponsServices from './coupons.services'
 
 type Tx = Prisma.TransactionClient
 
@@ -22,7 +23,7 @@ const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
 
 const orderInclude = { items: { orderBy: { product_name: 'asc' } } } satisfies Prisma.OrderInclude
 
-//đổi trạng thái đơn sang Cancelled và trả hàng về kho (chạy trong transaction)
+//đổi trạng thái đơn sang Cancelled, trả hàng về kho và trả lại lượt dùng coupon (chạy trong transaction)
 //updateMany kèm điều kiện status hiện tại để 2 request huỷ cùng lúc không trả kho 2 lần
 const cancelAndRestock = async (tx: Tx, order_id: string, fromStatus: OrderStatus) => {
   const { count } = await tx.order.updateMany({
@@ -30,6 +31,8 @@ const cancelAndRestock = async (tx: Tx, order_id: string, fromStatus: OrderStatu
     data: { status: 'Cancelled' }
   })
   if (count === 0) throw conflict(ORDER_MESSAGES.INVALID_STATUS_TRANSITION)
+  const cancelled = await tx.order.findUnique({ where: { id: order_id }, select: { coupon_id: true } })
+  if (cancelled?.coupon_id) await couponsServices.release(tx, cancelled.coupon_id)
   const items = await tx.orderItem.findMany({ where: { order_id } })
   for (const item of items) {
     if (item.product_id) {
@@ -62,10 +65,18 @@ class OrdersServices {
         if (count === 0) throw conflict(ORDER_MESSAGES.NOT_ENOUGH_STOCK)
       }
 
+      const subtotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0)
+      const coupon = body.coupon_code
+        ? await couponsServices.redeem(tx, user_id, body.coupon_code, subtotal)
+        : { coupon_id: null, coupon_code: '', discount_amount: 0 }
+
       const order = await tx.order.create({
         data: {
           user_id,
-          total_amount: cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0),
+          total_amount: subtotal - coupon.discount_amount,
+          coupon_id: coupon.coupon_id,
+          coupon_code: coupon.coupon_code,
+          discount_amount: coupon.discount_amount,
           shipping_name: body.shipping_name,
           shipping_phone: body.shipping_phone,
           shipping_address: body.shipping_address,

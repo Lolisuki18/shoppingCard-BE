@@ -51,6 +51,10 @@ class DatabaseService {
     return this.client.order
   }
 
+  get coupons() {
+    return this.client.coupon
+  }
+
   //dùng khi cần nhiều thao tác phải thành công/thất bại cùng nhau (throw trong callback sẽ rollback tất cả)
   get $transaction() {
     return this.client.$transaction.bind(this.client) as PrismaClient['$transaction']

@@ -55,13 +55,24 @@ Giá tiền là số nguyên (VND). Danh sách phân trang trả `result: { item
 
 | Method & path                                | Việc                                                                                                        |
 | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `POST /orders`                               | Tạo đơn từ giỏ: `{shipping_name, shipping_phone, shipping_address, note?}`. Trừ kho, xoá giỏ                |
+| `POST /orders`                               | Tạo đơn từ giỏ: `{shipping_name, shipping_phone, shipping_address, note?, coupon_code?}`. Trừ kho, xoá giỏ  |
 | `GET /orders`, `GET /orders/:id`             | Đơn của chính mình (`?status=` để lọc)                                                                      |
 | `POST /orders/:id/cancel`                    | Khách tự huỷ khi đơn còn `Pending`, hoàn kho                                                                |
 | `GET /admin/orders`, `GET /admin/orders/:id` | Admin/Staff xem mọi đơn                                                                                     |
 | `PATCH /admin/orders/:id/status`             | Admin/Staff đổi trạng thái: `Pending → Confirmed → Shipping → Delivered`; huỷ được từ `Pending`/`Confirmed` |
 
 Chưa có thanh toán online (đơn mặc định là thanh toán khi nhận hàng).
+
+### Mã giảm giá
+
+Đơn có thêm `coupon_code`, `discount_amount`; `total_amount` là số tiền khách phải trả (đã trừ giảm giá). Mã không phân biệt hoa/thường. Huỷ đơn thì trả lại lượt dùng mã.
+
+| Method & path                                                          | Quyền        | Ghi chú                                                                                                                                                                                                  |
+| ---------------------------------------------------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /coupons/validate {code}`                                        | Đã đăng nhập | Xem trước với giỏ hiện tại: `{coupon, subtotal_amount, discount_amount, total_amount}`. 404 nếu không có mã, 422 nếu không dùng được (hết hạn, hết lượt, chưa đủ tối thiểu...)                           |
+| `GET /admin/coupons` (`?search=&is_active=`), `GET /admin/coupons/:id` | Admin, Staff |                                                                                                                                                                                                          |
+| `POST /admin/coupons`, `PATCH /admin/coupons/:id`                      | Admin, Staff | `code, discount_type (Percent/Fixed), discount_value, min_order_amount?, max_discount_amount?, usage_limit?, per_user_limit? (mặc định 1), starts_at?, expires_at?, is_active?`. `null` = không giới hạn |
+| `DELETE /admin/coupons/:id`                                            | Admin        | Đơn cũ vẫn giữ `coupon_code`/`discount_amount`                                                                                                                                                           |
 
 ### Phân quyền
 

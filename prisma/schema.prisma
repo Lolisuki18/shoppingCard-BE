@@ -45,6 +45,11 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
+enum DiscountType {
+  Percent // giảm theo %, discount_value = 1..100
+  Fixed // giảm số tiền cố định (VND)
+}
+
 enum OrderStatus {
   Pending // chờ xác nhận
   Confirmed // đã xác nhận
@@ -106,7 +111,10 @@ model Order {
   id               String      @id @default(uuid()) @db.Uuid
   user_id          String      @db.Uuid
   status           OrderStatus @default(Pending)
-  total_amount     Int
+  total_amount     Int // số tiền khách phải trả = tổng tiền hàng - discount_amount
+  coupon_id        String?     @db.Uuid
+  coupon_code      String      @default("") // bản chụp mã đã dùng (coupon bị xoá thì đơn vẫn giữ)
+  discount_amount  Int         @default(0)
   shipping_name    String
   shipping_phone   String
   shipping_address String
@@ -114,9 +122,11 @@ model Order {
   created_at       DateTime    @default(now())
   updated_at       DateTime    @updatedAt
   user             User        @relation(fields: [user_id], references: [id], onDelete: Restrict)
+  coupon           Coupon?     @relation(fields: [coupon_id], references: [id], onDelete: SetNull)
   items            OrderItem[]
 
   @@index([user_id, created_at])
+  @@index([coupon_id])
   @@index([status])
   @@map("orders")
 }
@@ -135,4 +145,25 @@ model OrderItem {
 
   @@index([order_id])
   @@map("order_items")
+}
+// Mã giảm giá. used_count tăng khi tạo đơn và giảm lại khi đơn bị huỷ
+model Coupon {
+  id                  String       @id @default(uuid()) @db.Uuid
+  code                String       @unique // luôn lưu IN HOA
+  description         String       @default("")
+  discount_type       DiscountType
+  discount_value      Int
+  min_order_amount    Int          @default(0) // đơn tối thiểu để được áp dụng
+  max_discount_amount Int? // trần giảm giá (chỉ có ý nghĩa với Percent)
+  usage_limit         Int? // tổng số lượt dùng, null = không giới hạn
+  per_user_limit      Int?         @default(1) // số lượt mỗi khách, null = không giới hạn
+  used_count          Int          @default(0)
+  starts_at           DateTime?
+  expires_at          DateTime?
+  is_active           Boolean      @default(true)
+  created_at          DateTime     @default(now())
+  updated_at          DateTime     @updatedAt
+  orders              Order[]
+
+  @@map("coupons")
 }

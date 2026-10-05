@@ -1,10 +1,11 @@
 //các validator dùng chung cho nhóm API shop (category, product, cart, order)
 import { checkSchema, ParamSchema } from 'express-validator'
-import { OrderStatus } from '@prisma/client'
+import { DiscountType, OrderStatus } from '@prisma/client'
 import {
   CART_MESSAGES,
   CATEGORY_MESSAGES,
   COMMON_MESSAGES,
+  COUPON_MESSAGES,
   ORDER_MESSAGES,
   PRODUCT_MESSAGES
 } from '~/constants/messages'
@@ -168,6 +169,73 @@ export const cartItemParamValidator = validate(
   checkSchema({ product_id: { in: ['params'], ...uuidSchema(CART_MESSAGES.PRODUCT_ID_IS_INVALID) } })
 )
 
+//---------------- coupon ----------------
+//mã luôn được chuẩn hoá thành IN HOA (khách gõ "sale10" vẫn dùng được mã SALE10)
+const couponCodeSchema = ({ optional }: { optional: boolean }): ParamSchema => ({
+  optional,
+  isString: { errorMessage: COUPON_MESSAGES.CODE_IS_INVALID },
+  trim: true,
+  toUpperCase: true,
+  matches: { options: /^[A-Z0-9_-]{3,32}$/, errorMessage: COUPON_MESSAGES.CODE_IS_INVALID }
+})
+const nullableInt = (min: number, errorMessage: string): ParamSchema => ({
+  optional: { options: { nullable: true } },
+  isInt: { options: { min }, errorMessage },
+  toInt: true
+})
+const nullableDate: ParamSchema = {
+  optional: { options: { nullable: true } },
+  isISO8601: { errorMessage: COUPON_MESSAGES.DATE_IS_INVALID },
+  toDate: true
+}
+const couponFields = (isCreate: boolean): Record<string, ParamSchema> => {
+  const required = (schema: ParamSchema): ParamSchema => (isCreate ? schema : { optional: true, ...schema })
+  return {
+    code: isCreate ? couponCodeSchema({ optional: false }) : couponCodeSchema({ optional: true }),
+    description: {
+      optional: true,
+      isString: { errorMessage: COUPON_MESSAGES.DESCRIPTION_LENGTH_MUST_BE_LESS_THAN_500 },
+      trim: true,
+      isLength: { options: { max: 500 }, errorMessage: COUPON_MESSAGES.DESCRIPTION_LENGTH_MUST_BE_LESS_THAN_500 }
+    },
+    discount_type: required({
+      isIn: { options: [Object.values(DiscountType)], errorMessage: COUPON_MESSAGES.DISCOUNT_TYPE_IS_INVALID }
+    }),
+    discount_value: required({
+      isInt: { options: { min: 1 }, errorMessage: COUPON_MESSAGES.DISCOUNT_VALUE_MUST_BE_A_POSITIVE_INTEGER },
+      toInt: true
+    }),
+    min_order_amount: {
+      optional: true,
+      isInt: { options: { min: 0 }, errorMessage: COUPON_MESSAGES.MIN_ORDER_AMOUNT_MUST_BE_A_NON_NEGATIVE_INTEGER },
+      toInt: true
+    },
+    max_discount_amount: nullableInt(1, COUPON_MESSAGES.MAX_DISCOUNT_AMOUNT_MUST_BE_A_POSITIVE_INTEGER),
+    usage_limit: nullableInt(1, COUPON_MESSAGES.USAGE_LIMIT_MUST_BE_A_POSITIVE_INTEGER),
+    per_user_limit: nullableInt(1, COUPON_MESSAGES.PER_USER_LIMIT_MUST_BE_A_POSITIVE_INTEGER),
+    starts_at: nullableDate,
+    expires_at: nullableDate,
+    is_active: {
+      optional: true,
+      isBoolean: { options: { strict: true }, errorMessage: COUPON_MESSAGES.IS_ACTIVE_MUST_BE_A_BOOLEAN }
+    }
+  }
+}
+export const createCouponValidator = validate(checkSchema(couponFields(true), ['body']))
+export const updateCouponValidator = validate(checkSchema(couponFields(false), ['body']))
+export const validateCouponValidator = validate(checkSchema({ code: couponCodeSchema({ optional: false }) }, ['body']))
+export const couponListValidator = validate(
+  checkSchema({
+    ...paginationSchema,
+    search: { in: ['query'], optional: true, isString: true, trim: true },
+    is_active: {
+      in: ['query'],
+      optional: true,
+      isIn: { options: [['true', 'false']], errorMessage: COUPON_MESSAGES.IS_ACTIVE_MUST_BE_A_BOOLEAN }
+    }
+  })
+)
+
 //---------------- order ----------------
 export const createOrderValidator = validate(
   checkSchema(
@@ -192,7 +260,8 @@ export const createOrderValidator = validate(
         isString: { errorMessage: ORDER_MESSAGES.NOTE_LENGTH_MUST_BE_LESS_THAN_500 },
         trim: true,
         isLength: { options: { max: 500 }, errorMessage: ORDER_MESSAGES.NOTE_LENGTH_MUST_BE_LESS_THAN_500 }
-      }
+      },
+      coupon_code: couponCodeSchema({ optional: true })
     },
     ['body']
   )
