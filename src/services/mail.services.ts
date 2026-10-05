@@ -121,7 +121,7 @@ class MailServices {
       const rows = order.items
         .map(
           (item) =>
-            `<tr><td>${escapeHtml(item.product_name)} × ${item.quantity}</td><td style="text-align:right">${vnd(item.unit_price * item.quantity)}</td></tr>`
+            `<tr><td>${escapeHtml(item.product_name)}${item.variant_name ? ` (${escapeHtml(item.variant_name)})` : ''} × ${item.quantity}</td><td style="text-align:right">${vnd(item.unit_price * item.quantity)}</td></tr>`
         )
         .join('')
       const discount = order.discount_amount

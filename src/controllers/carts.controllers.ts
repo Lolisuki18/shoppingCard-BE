@@ -15,8 +15,8 @@ export const getCartController = async (req: Request, res: Response) => {
 }
 
 export const addToCartController = async (req: Request<ParamsDictionary, any, AddToCartReqBody>, res: Response) => {
-  const { product_id, quantity } = req.body
-  const result = await cartsServices.addItem({ user_id: getUserId(req), product_id, quantity })
+  const { product_id, variant_id, quantity } = req.body
+  const result = await cartsServices.addItem({ user_id: getUserId(req), product_id, variant_id, quantity })
   res.status(HTTP_STATUS.OK).json({ message: CART_MESSAGES.ADD_SUCCESS, result })
 }
 
@@ -27,13 +27,21 @@ export const updateCartItemController = async (
   const result = await cartsServices.updateItem({
     user_id: getUserId(req),
     product_id: req.params.product_id,
+    variant_id: req.body.variant_id,
     quantity: req.body.quantity
   })
   res.status(HTTP_STATUS.OK).json({ message: CART_MESSAGES.UPDATE_SUCCESS, result })
 }
 
-export const removeCartItemController = async (req: Request<ParamsDictionary>, res: Response) => {
-  const result = await cartsServices.removeItem({ user_id: getUserId(req), product_id: req.params.product_id })
+export const removeCartItemController = async (
+  req: Request<ParamsDictionary, any, any, { variant_id?: string }>,
+  res: Response
+) => {
+  const result = await cartsServices.removeItem({
+    user_id: getUserId(req),
+    product_id: req.params.product_id,
+    variant_id: req.query.variant_id
+  })
   res.status(HTTP_STATUS.OK).json({ message: CART_MESSAGES.REMOVE_SUCCESS, result })
 }
 

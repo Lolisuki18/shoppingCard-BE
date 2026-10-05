@@ -11,6 +11,7 @@ import {
   PRODUCT_MESSAGES,
   REVIEW_MESSAGES,
   STATS_MESSAGES,
+  VARIANT_MESSAGES,
   WISHLIST_MESSAGES
 } from '~/constants/messages'
 import { validate } from '~/utils/validation'
@@ -101,14 +102,116 @@ const isActiveSchema: ParamSchema = {
   isBoolean: { options: { strict: true }, errorMessage: PRODUCT_MESSAGES.IS_ACTIVE_MUST_BE_A_BOOLEAN }
 }
 
+//---------------- variant ----------------
+const variantNameSchema: ParamSchema = {
+  isString: { errorMessage: VARIANT_MESSAGES.NAME_IS_REQUIRED },
+  trim: true,
+  isLength: { options: { min: 1, max: 100 }, errorMessage: VARIANT_MESSAGES.NAME_IS_REQUIRED }
+}
+const variantSkuSchema: ParamSchema = {
+  optional: { options: { nullable: true } },
+  isString: { errorMessage: VARIANT_MESSAGES.SKU_IS_INVALID },
+  trim: true,
+  isLength: { options: { min: 1, max: 64 }, errorMessage: VARIANT_MESSAGES.SKU_IS_INVALID }
+}
+const variantPriceSchema: ParamSchema = {
+  isInt: { options: { min: 0 }, errorMessage: VARIANT_MESSAGES.PRICE_MUST_BE_A_NON_NEGATIVE_INTEGER },
+  toInt: true
+}
+const variantStockSchema: ParamSchema = {
+  optional: true,
+  isInt: { options: { min: 0 }, errorMessage: VARIANT_MESSAGES.STOCK_MUST_BE_A_NON_NEGATIVE_INTEGER },
+  toInt: true
+}
+const variantIsActiveSchema: ParamSchema = {
+  optional: true,
+  isBoolean: { options: { strict: true }, errorMessage: VARIANT_MESSAGES.IS_ACTIVE_MUST_BE_A_BOOLEAN }
+}
+
+export const createVariantValidator = validate(
+  checkSchema(
+    {
+      name: variantNameSchema,
+      sku: variantSkuSchema,
+      price: variantPriceSchema,
+      stock: variantStockSchema,
+      is_active: variantIsActiveSchema
+    },
+    ['body']
+  )
+)
+export const updateVariantValidator = validate(
+  checkSchema(
+    {
+      name: { optional: true, ...variantNameSchema },
+      sku: variantSkuSchema,
+      price: { optional: true, ...variantPriceSchema },
+      stock: variantStockSchema,
+      is_active: variantIsActiveSchema
+    },
+    ['body']
+  )
+)
+export const variantParamValidator = validate(
+  checkSchema({
+    id: { in: ['params'], ...uuidSchema(COMMON_MESSAGES.ID_IS_INVALID) },
+    variant_id: { in: ['params'], ...uuidSchema(VARIANT_MESSAGES.ID_IS_INVALID) }
+  })
+)
+
+//mảng variants khi tạo sản phẩm: kiểm tra từng phần tử (và chuẩn hoá name/sku) ngay tại đây
+const variantsSchema: ParamSchema = {
+  optional: true,
+  custom: {
+    options: (value: unknown) => {
+      if (!Array.isArray(value) || value.length < 1 || value.length > 50) {
+        throw new Error(PRODUCT_MESSAGES.VARIANTS_MUST_BE_A_LIST)
+      }
+      const names = new Set<string>()
+      for (const raw of value) {
+        const v = raw as Record<string, unknown>
+        if (!raw || typeof raw !== 'object' || typeof v.name !== 'string')
+          throw new Error(VARIANT_MESSAGES.NAME_IS_REQUIRED)
+        const name = v.name.trim()
+        if (name.length < 1 || name.length > 100) throw new Error(VARIANT_MESSAGES.NAME_IS_REQUIRED)
+        if (names.has(name.toLowerCase())) throw new Error(VARIANT_MESSAGES.NAMES_MUST_BE_UNIQUE)
+        names.add(name.toLowerCase())
+        v.name = name
+        if (!Number.isInteger(v.price) || (v.price as number) < 0) {
+          throw new Error(VARIANT_MESSAGES.PRICE_MUST_BE_A_NON_NEGATIVE_INTEGER)
+        }
+        if (v.stock !== undefined && (!Number.isInteger(v.stock) || (v.stock as number) < 0)) {
+          throw new Error(VARIANT_MESSAGES.STOCK_MUST_BE_A_NON_NEGATIVE_INTEGER)
+        }
+        if (v.sku !== undefined && v.sku !== null) {
+          if (typeof v.sku !== 'string' || v.sku.trim().length < 1 || v.sku.trim().length > 64) {
+            throw new Error(VARIANT_MESSAGES.SKU_IS_INVALID)
+          }
+          v.sku = v.sku.trim()
+        }
+        if (v.is_active !== undefined && typeof v.is_active !== 'boolean') {
+          throw new Error(VARIANT_MESSAGES.IS_ACTIVE_MUST_BE_A_BOOLEAN)
+        }
+        //chỉ giữ các trường hợp lệ
+        for (const key of Object.keys(v))
+          if (!['name', 'sku', 'price', 'stock', 'is_active'].includes(key)) delete v[key]
+      }
+      return true
+    }
+  }
+}
+//price chỉ bắt buộc khi sản phẩm không có variants
+const noVariants: CustomValidator = (value, { req }) => !(Array.isArray(req.body?.variants) && req.body.variants.length)
+
 export const createProductValidator = validate(
   checkSchema(
     {
       category_id: uuidSchema(PRODUCT_MESSAGES.CATEGORY_ID_IS_REQUIRED),
       name: productNameSchema,
       description: productDescriptionSchema,
-      price: priceSchema,
+      price: { ...priceSchema, isInt: { ...(priceSchema.isInt as object), if: noVariants } },
       stock: stockSchema,
+      variants: variantsSchema,
       images: imagesSchema,
       is_active: isActiveSchema
     },
@@ -163,17 +266,30 @@ const quantitySchema: ParamSchema = {
   isInt: { options: { min: 1, max: 999 }, errorMessage: CART_MESSAGES.QUANTITY_MUST_BE_FROM_1_TO_999 },
   toInt: true
 }
+const variantIdSchema: ParamSchema = { optional: true, ...uuidSchema(VARIANT_MESSAGES.ID_IS_INVALID) }
 export const addToCartValidator = validate(
-  checkSchema({ product_id: uuidSchema(CART_MESSAGES.PRODUCT_ID_IS_INVALID), quantity: quantitySchema }, ['body'])
+  checkSchema(
+    {
+      product_id: uuidSchema(CART_MESSAGES.PRODUCT_ID_IS_INVALID),
+      variant_id: variantIdSchema,
+      quantity: quantitySchema
+    },
+    ['body']
+  )
 )
 export const updateCartItemValidator = validate(
   checkSchema({
     product_id: { in: ['params'], ...uuidSchema(CART_MESSAGES.PRODUCT_ID_IS_INVALID) },
+    variant_id: { in: ['body'], ...variantIdSchema },
     quantity: { in: ['body'], ...quantitySchema }
   })
 )
+//DELETE /cart/items/:product_id?variant_id=
 export const cartItemParamValidator = validate(
-  checkSchema({ product_id: { in: ['params'], ...uuidSchema(CART_MESSAGES.PRODUCT_ID_IS_INVALID) } })
+  checkSchema({
+    product_id: { in: ['params'], ...uuidSchema(CART_MESSAGES.PRODUCT_ID_IS_INVALID) },
+    variant_id: { in: ['query'], ...variantIdSchema }
+  })
 )
 
 //---------------- coupon ----------------

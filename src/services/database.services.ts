@@ -43,6 +43,10 @@ class DatabaseService {
     return this.client.product
   }
 
+  get variants() {
+    return this.client.productVariant
+  }
+
   get cartItems() {
     return this.client.cartItem
   }

@@ -1,10 +1,13 @@
 import { Router } from 'express'
 import {
   createProductController,
+  createVariantController,
   deleteProductController,
+  deleteVariantController,
   getProductController,
   getProductsController,
-  updateProductController
+  updateProductController,
+  updateVariantController
 } from '~/controllers/products.controllers'
 import { createReviewController, getProductReviewsController } from '~/controllers/reviews.controllers'
 import { USER_ROLE } from '~/constants/enums'
@@ -13,13 +16,16 @@ import { filterMiddleware } from '~/middlewares/common.middleware'
 import {
   createProductValidator,
   createReviewValidator,
+  createVariantValidator,
   idParamValidator,
   paginationValidator,
   productListValidator,
-  updateProductValidator
+  updateProductValidator,
+  updateVariantValidator,
+  variantParamValidator
 } from '~/middlewares/shop.middlewares'
 import { accessTokenValidation } from '~/middlewares/users.middlewares'
-import { CreateReviewReqBody, ProductReqBody } from '~/models/requests/Shop.requests'
+import { CreateReviewReqBody, ProductReqBody, VariantReqBody } from '~/models/requests/Shop.requests'
 import { wrapAsync } from '~/utils/handlers'
 
 const productRouter = Router()
@@ -30,6 +36,7 @@ const PRODUCT_FIELDS: (keyof ProductReqBody)[] = [
   'description',
   'price',
   'stock',
+  'variants',
   'images',
   'is_active'
 ]
@@ -67,6 +74,25 @@ productRouter.patch(
   updateProductValidator,
   wrapAsync(updateProductController)
 )
+//biến thể (size/màu...): Admin + Staff, riêng xoá biến thể cũng chỉ cần Admin/Staff vì không mất dữ liệu đơn hàng
+const VARIANT_FIELDS: (keyof VariantReqBody)[] = ['name', 'sku', 'price', 'stock', 'is_active']
+productRouter.post(
+  '/:id/variants',
+  ...manage,
+  idParamValidator,
+  filterMiddleware<VariantReqBody>(VARIANT_FIELDS),
+  createVariantValidator,
+  wrapAsync(createVariantController)
+)
+productRouter.patch(
+  '/:id/variants/:variant_id',
+  ...manage,
+  variantParamValidator,
+  filterMiddleware<VariantReqBody>(VARIANT_FIELDS),
+  updateVariantValidator,
+  wrapAsync(updateVariantController)
+)
+productRouter.delete('/:id/variants/:variant_id', ...manage, variantParamValidator, wrapAsync(deleteVariantController))
 //chỉ Admin được xoá
 productRouter.delete(
   '/:id',

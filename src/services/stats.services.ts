@@ -125,20 +125,36 @@ class StatsServices {
     }
   }
 
-  //sản phẩm đang bán mà sắp hết hàng (stock <= threshold), ít hàng nhất lên đầu
+  //biến thể đang bán mà sắp hết hàng (stock <= threshold), ít hàng nhất lên đầu. variant_name = "" là sản phẩm không có tuỳ chọn
   async lowStock({ threshold, ...query }: LowStockQuery) {
     const { page, limit, skip, take } = getPagination(query)
-    const where: Prisma.ProductWhereInput = { is_active: true, stock: { lte: threshold ?? 5 } }
-    const [items, total] = await Promise.all([
-      databaseService.products.findMany({
+    const where: Prisma.ProductVariantWhereInput = {
+      is_active: true,
+      stock: { lte: threshold ?? 5 },
+      product: { is_active: true }
+    }
+    const [rows, total] = await Promise.all([
+      databaseService.variants.findMany({
         where,
         orderBy: [{ stock: 'asc' }, { id: 'asc' }],
         skip,
         take,
-        select: { id: true, name: true, slug: true, stock: true, images: true }
+        select: {
+          id: true,
+          name: true,
+          sku: true,
+          stock: true,
+          product: { select: { id: true, name: true, slug: true, images: true } }
+        }
       }),
-      databaseService.products.count({ where })
+      databaseService.variants.count({ where })
     ])
+    const items = rows.map(({ product, name, ...variant }) => ({
+      ...variant,
+      variant_id: variant.id,
+      variant_name: name,
+      product
+    }))
     return buildPage({ items, total, page, limit })
   }
 }

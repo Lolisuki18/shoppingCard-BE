@@ -54,13 +54,22 @@ Giá tiền là số nguyên (VND). Danh sách phân trang trả `result: { item
 | `DELETE /categories/:id`                         | Admin        | 409 nếu còn sản phẩm                                                                                                                             |
 | `GET /products`                                  | public       | Query: `page, limit, search, category_id, min_price, max_price, sort` (`newest`/`price_asc`/`price_desc`/`name`/`rating`). Chỉ sản phẩm đang bán |
 | `GET /products/:id`                              | public       |                                                                                                                                                  |
-| `POST /products`, `PATCH /products/:id`          | Admin, Staff | `images` là mảng URL (lấy từ `POST /medias/upload-image`)                                                                                        |
+| `POST /products`, `PATCH /products/:id`          | Admin, Staff | `images` là mảng URL (lấy từ `POST /medias/upload-image`). Tạo sản phẩm: truyền `price` (+`stock`) hoặc `variants` (xem bên dưới)                |
 | `DELETE /products/:id`                           | Admin        | Đơn cũ vẫn giữ tên/giá nhờ bản chụp trong `order_items`                                                                                          |
 | `GET /admin/products`, `GET /admin/products/:id` | Admin, Staff | Thấy cả sản phẩm đang ẩn (`is_active=false`)                                                                                                     |
 
+### Biến thể sản phẩm (size, màu...)
+
+Giá và tồn kho nằm ở **biến thể**. Mọi sản phẩm có ít nhất 1 biến thể; sản phẩm không có tuỳ chọn chỉ có 1 biến thể mặc định tên rỗng (`has_variants: false`), nên FE cũ vẫn dùng `price`/`stock` như trước. `price` của sản phẩm = giá thấp nhất, `stock` = tổng tồn kho các biến thể đang bán (tự cập nhật, dùng để lọc/sắp xếp). Khách chỉ thấy biến thể `is_active`.
+
+- Tạo sản phẩm có size: `POST /products {category_id, name, variants: [{name: "S", price, stock?, sku?, is_active?}, ...]}` (tên không trùng nhau, không phân biệt hoa/thường; `sku` duy nhất).
+- `PATCH /products/:id` có `price`/`stock` chỉ dùng được với sản phẩm không có tuỳ chọn (409 nếu có biến thể → sửa ở biến thể).
+- `POST /products/:id/variants`, `PATCH /products/:id/variants/:variant_id`, `DELETE /products/:id/variants/:variant_id` (Admin, Staff). Thêm biến thể đầu tiên vào sản phẩm không có tuỳ chọn thì biến thể mặc định bị thay thế (giỏ hàng đang chứa nó bị xoá khỏi giỏ, đơn cũ giữ nguyên). Sản phẩm luôn phải còn ít nhất 1 biến thể.
+- Đơn hàng lưu `variant_id`, `variant_name` (bản chụp) cho mỗi dòng.
+
 ### Giỏ hàng — `/cart` (cần đăng nhập + đã verify email)
 
-`GET /cart`, `DELETE /cart`, `POST /cart/items {product_id, quantity}` (cộng dồn), `PATCH /cart/items/:product_id {quantity}`, `DELETE /cart/items/:product_id`
+`GET /cart`, `DELETE /cart`, `POST /cart/items {product_id, variant_id?, quantity}` (cộng dồn), `PATCH /cart/items/:product_id {variant_id?, quantity}`, `DELETE /cart/items/:product_id?variant_id=`. `variant_id` bắt buộc khi sản phẩm có nhiều biến thể (422 nếu thiếu); mỗi dòng trong giỏ trả thêm `variant`.
 
 ### Đơn hàng — `/orders` (cần đăng nhập + đã verify email)
 
@@ -116,7 +125,7 @@ Doanh thu tính trên đơn `Delivered`, theo ngày tạo đơn; ngày/tháng c�
 | `GET /admin/stats/overview?from&to`               | `revenue, discount_total, average_order_value, orders_total, orders_by_status, new_users, users_total, products_total, products_active`. Bỏ trống = từ trước đến nay |
 | `GET /admin/stats/revenue?from&to&group_by`       | `group_by=day` (mặc định) hoặc `month`; mặc định 30 ngày gần nhất, tối đa 366 ngày / 60 tháng. Kỳ không có đơn vẫn trả về với `0`                                    |
 | `GET /admin/stats/top-products?from&to&limit`     | Bán chạy theo số lượng (`limit` mặc định 10, tối đa 50). `revenue` là tiền hàng, chưa trừ mã giảm giá                                                                |
-| `GET /admin/stats/low-stock?threshold&page&limit` | Sản phẩm đang bán có `stock <= threshold` (mặc định 5), ít hàng nhất lên đầu                                                                                         |
+| `GET /admin/stats/low-stock?threshold&page&limit` | Biến thể đang bán có `stock <= threshold` (mặc định 5), ít hàng nhất lên đầu (`variant_name` rỗng = sản phẩm không có tuỳ chọn)                                      |
 
 ### Phân quyền
 

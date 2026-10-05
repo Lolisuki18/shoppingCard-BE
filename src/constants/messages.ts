@@ -135,6 +135,8 @@ export const PRODUCT_MESSAGES = {
   MIN_PRICE_MUST_BE_A_NON_NEGATIVE_INTEGER: 'min_price must be a non-negative integer',
   MAX_PRICE_MUST_BE_A_NON_NEGATIVE_INTEGER: 'max_price must be a non-negative integer',
   SORT_IS_INVALID: 'sort must be one of: newest, price_asc, price_desc, name, rating',
+  PRICE_IS_REQUIRED: 'Price is required when the product has no variants',
+  VARIANTS_MUST_BE_A_LIST: 'variants must be a list of 1 - 50 variants',
   NOT_FOUND: 'Product not found',
   GET_SUCCESS: 'Get product success',
   GET_LIST_SUCCESS: 'Get products success',
@@ -149,6 +151,7 @@ export const CART_MESSAGES = {
   PRODUCT_NOT_AVAILABLE: 'Product is not available',
   NOT_ENOUGH_STOCK: 'Not enough stock for this quantity',
   ITEM_NOT_FOUND: 'Item is not in your cart',
+  VARIANT_REQUIRED: 'This product has several variants, variant_id is required',
   GET_SUCCESS: 'Get cart success',
   ADD_SUCCESS: 'Add to cart success',
   UPDATE_SUCCESS: 'Update cart item success',
@@ -251,4 +254,22 @@ export const ADDRESS_MESSAGES = {
   CREATE_SUCCESS: 'Create address success',
   UPDATE_SUCCESS: 'Update address success',
   DELETE_SUCCESS: 'Delete address success'
+} as const
+
+export const VARIANT_MESSAGES = {
+  NAME_IS_REQUIRED: 'Variant name is required (1 - 100 characters)',
+  NAMES_MUST_BE_UNIQUE: 'Variant names must be unique within a product',
+  SKU_IS_INVALID: 'sku must be 1 - 64 characters or null',
+  PRICE_MUST_BE_A_NON_NEGATIVE_INTEGER: 'Variant price must be a non-negative integer',
+  STOCK_MUST_BE_A_NON_NEGATIVE_INTEGER: 'Variant stock must be a non-negative integer',
+  IS_ACTIVE_MUST_BE_A_BOOLEAN: 'Variant is_active must be a boolean',
+  ID_IS_INVALID: 'variant_id must be a valid UUID',
+  NOT_FOUND: 'Variant not found',
+  ALREADY_EXISTS: 'A variant with this name or SKU already exists',
+  HAS_VARIANTS: 'This product has variants: update price and stock on each variant (/products/:id/variants)',
+  MUST_KEEP_ONE: 'A product needs at least one variant',
+  CANNOT_RENAME_DEFAULT: 'The default variant of a product without options cannot be renamed',
+  CREATE_SUCCESS: 'Create variant success',
+  UPDATE_SUCCESS: 'Update variant success',
+  DELETE_SUCCESS: 'Delete variant success'
 } as const

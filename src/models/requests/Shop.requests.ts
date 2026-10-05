@@ -16,12 +16,23 @@ export interface CategoryReqBody {
 export type UpdateCategoryReqBody = Partial<CategoryReqBody>
 
 //product
+export interface VariantReqBody {
+  name: string
+  sku?: string | null
+  price: number
+  stock?: number
+  is_active?: boolean
+}
+export type UpdateVariantReqBody = Partial<VariantReqBody>
+
 export interface ProductReqBody {
   category_id: string
   name: string
   description?: string
-  price: number
+  //sản phẩm không có tuỳ chọn: truyền price (+ stock). Sản phẩm có size/màu...: truyền variants (price/stock bỏ qua)
+  price?: number
   stock?: number
+  variants?: VariantReqBody[]
   images?: string[]
   is_active?: boolean
 }
@@ -39,9 +50,11 @@ export interface ProductListQuery extends PaginationQuery {
 //cart
 export interface AddToCartReqBody {
   product_id: string
+  variant_id?: string //bắt buộc nếu sản phẩm có nhiều biến thể
   quantity: number
 }
 export interface UpdateCartItemReqBody {
+  variant_id?: string
   quantity: number
 }
 

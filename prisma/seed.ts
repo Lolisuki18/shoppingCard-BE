@@ -39,14 +39,35 @@ async function seedCatalog() {
   }
   const clothes = await prisma.category.create({ data: { name: 'Thời trang', slug: 'thoi-trang' } })
   const phones = await prisma.category.create({ data: { name: 'Điện thoại', slug: 'dien-thoai' } })
-  await prisma.product.createMany({
-    data: [
-      { category_id: clothes.id, name: 'Áo thun basic', slug: 'ao-thun-basic', price: 150000, stock: 50 },
-      { category_id: clothes.id, name: 'Quần jean slim', slug: 'quan-jean-slim', price: 350000, stock: 30 },
-      { category_id: phones.id, name: 'Điện thoại X1', slug: 'dien-thoai-x1', price: 7990000, stock: 10 },
-      { category_id: phones.id, name: 'Ốp lưng X1', slug: 'op-lung-x1', price: 99000, stock: 100 }
-    ]
-  })
+  //sản phẩm có size thì khai báo variants; không có tuỳ chọn thì 1 biến thể mặc định (name rỗng)
+  const sizes = (price: number) => ['S', 'M', 'L'].map((name) => ({ name, price, stock: 20 }))
+  const products = [
+    { category_id: clothes.id, name: 'Áo thun basic', slug: 'ao-thun-basic', variants: sizes(150000) },
+    { category_id: clothes.id, name: 'Quần jean slim', slug: 'quan-jean-slim', variants: sizes(350000) },
+    {
+      category_id: phones.id,
+      name: 'Điện thoại X1',
+      slug: 'dien-thoai-x1',
+      variants: [{ name: '', price: 7990000, stock: 10 }]
+    },
+    {
+      category_id: phones.id,
+      name: 'Ốp lưng X1',
+      slug: 'op-lung-x1',
+      variants: [{ name: '', price: 99000, stock: 100 }]
+    }
+  ]
+  for (const { variants, ...product } of products) {
+    await prisma.product.create({
+      data: {
+        ...product,
+        //price/stock của sản phẩm là số liệu tổng hợp từ biến thể (giá thấp nhất, tổng tồn kho)
+        price: Math.min(...variants.map((v) => v.price)),
+        stock: variants.reduce((sum, v) => sum + v.stock, 0),
+        variants: { create: variants }
+      }
+    })
+  }
   console.log('Đã tạo 2 category và 4 sản phẩm mẫu')
 }
 

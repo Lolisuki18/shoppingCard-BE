@@ -5,6 +5,7 @@ import { ADDRESS_MESSAGES, ORDER_MESSAGES } from '~/constants/messages'
 import { ErrorWithStatus } from '~/models/Errors'
 import { CreateOrderReqBody, OrderListQuery } from '~/models/requests/Shop.requests'
 import { buildPage, getPagination } from '~/utils/pagination'
+import { syncProductAggregates } from '~/utils/productAggregates'
 import { calculateShippingFee } from '~/utils/shipping'
 import couponsServices from './coupons.services'
 import mailServices from './mail.services'
@@ -35,13 +36,19 @@ const cancelAndRestock = async (tx: Tx, order_id: string, fromStatus: OrderStatu
   if (count === 0) throw conflict(ORDER_MESSAGES.INVALID_STATUS_TRANSITION)
   const cancelled = await tx.order.findUnique({ where: { id: order_id }, select: { coupon_id: true } })
   if (cancelled?.coupon_id) await couponsServices.release(tx, cancelled.coupon_id)
-  const items = await tx.orderItem.findMany({ where: { order_id } })
+  const items = await tx.orderItem.findMany({ where: { order_id }, orderBy: { variant_id: 'asc' } })
+  const productIds = new Set<string>()
   for (const item of items) {
-    if (item.product_id) {
-      //sản phẩm có thể đã bị xoá (product_id = null) thì bỏ qua
-      await tx.product.updateMany({ where: { id: item.product_id }, data: { stock: { increment: item.quantity } } })
+    //biến thể / sản phẩm có thể đã bị xoá (variant_id = null) thì bỏ qua
+    if (item.variant_id) {
+      await tx.productVariant.updateMany({
+        where: { id: item.variant_id },
+        data: { stock: { increment: item.quantity } }
+      })
     }
+    if (item.product_id) productIds.add(item.product_id)
   }
+  for (const product_id of [...productIds].sort()) await syncProductAggregates(tx, product_id)
 }
 
 class OrdersServices {
@@ -56,25 +63,29 @@ class OrdersServices {
     return databaseService.$transaction(async (tx) => {
       const cartItems = await tx.cartItem.findMany({
         where: { user_id },
-        include: { product: true },
-        orderBy: { product_id: 'asc' } //thứ tự cố định để 2 đơn song song không khoá chéo nhau (deadlock)
+        include: { product: true, variant: true },
+        orderBy: { variant_id: 'asc' } //thứ tự cố định để 2 đơn song song không khoá chéo nhau (deadlock)
       })
       if (cartItems.length === 0) {
         throw new ErrorWithStatus({ status: HTTP_STATUS.UNPROCESSABLE_ENTITY, message: ORDER_MESSAGES.CART_IS_EMPTY })
       }
 
       for (const item of cartItems) {
-        if (!item.product.is_active) throw conflict(ORDER_MESSAGES.PRODUCT_UNAVAILABLE)
-        //trừ kho bằng 1 câu lệnh có điều kiện stock >= quantity: an toàn khi nhiều người mua cùng lúc
-        const { count } = await tx.product.updateMany({
-          where: { id: item.product_id, is_active: true, stock: { gte: item.quantity } },
+        if (!item.product.is_active || !item.variant.is_active) throw conflict(ORDER_MESSAGES.PRODUCT_UNAVAILABLE)
+        //trừ kho (của biến thể) bằng 1 câu lệnh có điều kiện stock >= quantity: an toàn khi nhiều người mua cùng lúc
+        const { count } = await tx.productVariant.updateMany({
+          where: { id: item.variant_id, is_active: true, stock: { gte: item.quantity } },
           data: { stock: { decrement: item.quantity } }
         })
         if (count === 0) throw conflict(ORDER_MESSAGES.NOT_ENOUGH_STOCK)
       }
+      //cập nhật tồn kho tổng của từng sản phẩm (thứ tự cố định để không khoá chéo nhau)
+      for (const product_id of [...new Set(cartItems.map((item) => item.product_id))].sort()) {
+        await syncProductAggregates(tx, product_id)
+      }
 
       const shipping = await this.resolveShipping(tx, user_id, body)
-      const subtotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0)
+      const subtotal = cartItems.reduce((sum, item) => sum + item.variant.price * item.quantity, 0)
       const coupon = body.coupon_code
         ? await couponsServices.redeem(tx, user_id, body.coupon_code, subtotal)
         : { coupon_id: null, coupon_code: '', discount_amount: 0 }
@@ -97,9 +108,11 @@ class OrdersServices {
           items: {
             create: cartItems.map((item) => ({
               product_id: item.product_id,
+              variant_id: item.variant_id,
               product_name: item.product.name,
+              variant_name: item.variant.name,
               product_image: item.product.images[0] ?? '',
-              unit_price: item.product.price, //chốt giá tại thời điểm mua
+              unit_price: item.variant.price, //chốt giá tại thời điểm mua
               quantity: item.quantity
             }))
           }

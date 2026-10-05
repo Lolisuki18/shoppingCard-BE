@@ -62,9 +62,9 @@ class CouponsServices {
   //---------------- khách hàng ----------------
   //xem trước: áp mã này vào giỏ hiện tại thì được giảm bao nhiêu
   async preview(user_id: string, code: string) {
-    const cartItems = await databaseService.cartItems.findMany({ where: { user_id }, include: { product: true } })
+    const cartItems = await databaseService.cartItems.findMany({ where: { user_id }, include: { variant: true } })
     if (cartItems.length === 0) throw notApplicable(COUPON_MESSAGES.CART_IS_EMPTY)
-    const subtotal = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0)
+    const subtotal = cartItems.reduce((sum, item) => sum + item.variant.price * item.quantity, 0)
     const coupon = await databaseService.coupons.findUnique({ where: { code } })
     if (!coupon) throw couponNotFound()
     await assertApplicable(databaseService.orders, coupon, user_id, subtotal)

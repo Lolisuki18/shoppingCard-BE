@@ -22,13 +22,13 @@ cartRouter.get('/', wrapAsync(getCartController))
 cartRouter.delete('/', wrapAsync(clearCartController))
 cartRouter.post(
   '/items',
-  filterMiddleware<AddToCartReqBody>(['product_id', 'quantity']),
+  filterMiddleware<AddToCartReqBody>(['product_id', 'variant_id', 'quantity']),
   addToCartValidator,
   wrapAsync(addToCartController)
 )
 cartRouter.patch(
   '/items/:product_id',
-  filterMiddleware<UpdateCartItemReqBody>(['quantity']),
+  filterMiddleware<UpdateCartItemReqBody>(['variant_id', 'quantity']),
   updateCartItemValidator,
   wrapAsync(updateCartItemController)
 )
