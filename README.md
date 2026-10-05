@@ -13,6 +13,10 @@ npm run db:seed             # tạo tài khoản Admin + vài sản phẩm mẫu
 npm run dev                 # http://localhost:3000
 ```
 
+## Email
+
+Gửi qua SMTP (nodemailer): xác thực email, quên mật khẩu, xác nhận đơn, đổi trạng thái đơn. Cấu hình `SMTP_*`, `MAIL_FROM`, `API_URL`, `CLIENT_URL` trong `.env` (xem `.env.example`). Để trống `SMTP_HOST` thì nội dung mail chỉ được in ra log (tiện khi dev). Gửi mail lỗi chỉ ghi log, không làm request thất bại.
+
 ## Lệnh DB
 
 | Lệnh                        | Việc                                                     |

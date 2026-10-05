@@ -8,6 +8,7 @@ import { TokenType, UserVerifyStatus } from '~/constants/enums'
 import { ErrorWithStatus } from '~/models/Errors'
 import HTTP_STATUS from '~/constants/httpStatus'
 import { USERS_MESSAGES } from '~/constants/messages'
+import mailServices from './mail.services'
 import dotenv from 'dotenv'
 dotenv.config()
 
@@ -120,10 +121,8 @@ class UsersServices {
     //sau khi tạo tài khoản và lưu lên database ta sẽ ký ac và rf token để đưa cho người dùng
     const tokens = await this.signAndSaveTokens(user_id)
 
-    //Ký thêm email_verify_token gửi vào email của người đăng ký
-    console.log(`Gửi mail link xác thực sau:
-          http://localhost:3000/users/verify-email/?email_verify_token=${email_verify_token}
-      `)
+    //gửi email_verify_token vào email của người đăng ký (không chờ: gửi lỗi cũng không làm đăng ký thất bại)
+    void mailServices.sendVerifyEmail(payload.email, payload.name, email_verify_token)
     return tokens
   }
   //hàm đăng nhập
@@ -180,19 +179,18 @@ class UsersServices {
   //gửi lại link verifyEmail
   async resendEmailVerify(user_id: string) {
     const email_verify_token = await this.signEmailVerifyToken(user_id)
-    console.log(`Gửi mail link xác thực sau:
-      http://localhost:3000/users/verify-email/?email_verify_token=${email_verify_token}
-  `)
     //lưu vào lại database
-    await databaseService.users.update({
+    const user = await databaseService.users.update({
       where: { id: user_id },
-      data: { email_verify_token }
+      data: { email_verify_token },
+      select: { email: true, name: true }
     })
+    void mailServices.sendVerifyEmail(user.email, user.name, email_verify_token)
   }
   //forgot Password
   async forgotPassword(email: string) {
     //dùng email tìm user lấy id tạo forgot_password_token
-    const user = await databaseService.users.findUnique({ where: { email }, select: { id: true } })
+    const user = await databaseService.users.findUnique({ where: { email }, select: { id: true, name: true } })
     if (user) {
       //ký forgot_password_token
       const forgot_password_token = await this.signForgotPasswordToken(user.id)
@@ -201,12 +199,8 @@ class UsersServices {
         where: { id: user.id },
         data: { forgot_password_token }
       })
-      //gửi email cái link cho người dùng
-      //3000 : back
-      //8000: front
-      console.log(`Gửi mail link xác thực sau:
-        http://localhost:8000/reset-password/?forgot_password_token=${forgot_password_token}
-    `)
+      //gửi link đặt lại mật khẩu (trỏ về FE) cho người dùng
+      void mailServices.sendForgotPassword(email, user.name, forgot_password_token)
     }
   }
   //reset password

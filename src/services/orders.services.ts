@@ -6,6 +6,7 @@ import { ErrorWithStatus } from '~/models/Errors'
 import { CreateOrderReqBody, OrderListQuery } from '~/models/requests/Shop.requests'
 import { buildPage, getPagination } from '~/utils/pagination'
 import couponsServices from './coupons.services'
+import mailServices from './mail.services'
 
 type Tx = Prisma.TransactionClient
 
@@ -45,6 +46,12 @@ const cancelAndRestock = async (tx: Tx, order_id: string, fromStatus: OrderStatu
 class OrdersServices {
   //tạo đơn từ giỏ hàng: kiểm tra + trừ kho + tạo đơn + xoá giỏ trong 1 transaction (lỗi giữa chừng thì rollback hết)
   async createFromCart(user_id: string, body: CreateOrderReqBody) {
+    const order = await this.createOrderInTransaction(user_id, body)
+    void mailServices.sendOrderMail(order.id, 'created') //sau khi đã commit; gửi lỗi không ảnh hưởng đơn
+    return order
+  }
+
+  private async createOrderInTransaction(user_id: string, body: CreateOrderReqBody) {
     return databaseService.$transaction(async (tx) => {
       const cartItems = await tx.cartItem.findMany({
         where: { user_id },
@@ -136,6 +143,7 @@ class OrdersServices {
       if (order.status !== 'Pending') throw conflict(ORDER_MESSAGES.CANNOT_CANCEL)
       await cancelAndRestock(tx, id, 'Pending')
     })
+    void mailServices.sendOrderMail(id, 'status')
     return this.getById(id, user_id)
   }
 
@@ -154,6 +162,7 @@ class OrdersServices {
         if (count === 0) throw conflict(ORDER_MESSAGES.INVALID_STATUS_TRANSITION)
       }
     })
+    void mailServices.sendOrderMail(id, 'status')
     return this.getById(id)
   }
 }
