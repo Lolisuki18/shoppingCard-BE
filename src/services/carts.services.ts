@@ -2,6 +2,7 @@ import databaseService from './database.services'
 import HTTP_STATUS from '~/constants/httpStatus'
 import { CART_MESSAGES } from '~/constants/messages'
 import { ErrorWithStatus } from '~/models/Errors'
+import { calculateShippingFee, getShippingConfig } from '~/utils/shipping'
 
 const itemNotFound = () => new ErrorWithStatus({ status: HTTP_STATUS.NOT_FOUND, message: CART_MESSAGES.ITEM_NOT_FOUND })
 const notEnoughStock = () =>
@@ -25,10 +26,15 @@ class CartsServices {
       //false nếu sản phẩm đã bị ẩn hoặc không đủ hàng -> FE cảnh báo trước khi đặt
       available: row.product.is_active && row.product.stock >= row.quantity
     }))
+    const total_amount = items.reduce((sum, item) => sum + item.subtotal, 0)
+    //phí ship ước tính khi chưa áp mã giảm giá (giỏ trống thì 0); khi đặt hàng phí ship tính lại trên tiền hàng sau giảm giá
+    const shipping_fee = items.length === 0 ? 0 : calculateShippingFee(total_amount)
     return {
       items,
       total_quantity: items.reduce((sum, item) => sum + item.quantity, 0),
-      total_amount: items.reduce((sum, item) => sum + item.subtotal, 0)
+      total_amount,
+      shipping_fee,
+      free_shipping_threshold: getShippingConfig().free_shipping_threshold
     }
   }
 

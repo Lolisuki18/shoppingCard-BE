@@ -6,6 +6,7 @@ import { ErrorWithStatus } from '~/models/Errors'
 import { CouponListQuery, CouponReqBody, UpdateCouponReqBody } from '~/models/requests/Shop.requests'
 import { buildPage, getPagination } from '~/utils/pagination'
 import { lockUserRow } from '~/utils/locks'
+import { calculateShippingFee } from '~/utils/shipping'
 import { isPrismaError } from '~/utils/prismaErrors'
 
 type Tx = Prisma.TransactionClient
@@ -68,11 +69,13 @@ class CouponsServices {
     if (!coupon) throw couponNotFound()
     await assertApplicable(databaseService.orders, coupon, user_id, subtotal)
     const discount_amount = calculateDiscount(coupon, subtotal)
+    const shipping_fee = calculateShippingFee(subtotal - discount_amount)
     return {
       coupon: { code: coupon.code, description: coupon.description },
       subtotal_amount: subtotal,
       discount_amount,
-      total_amount: subtotal - discount_amount
+      shipping_fee,
+      total_amount: subtotal - discount_amount + shipping_fee //đúng bằng total_amount của đơn nếu đặt ngay
     }
   }
 

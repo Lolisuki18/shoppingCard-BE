@@ -119,10 +119,11 @@ model Order {
   id               String      @id @default(uuid()) @db.Uuid
   user_id          String      @db.Uuid
   status           OrderStatus @default(Pending)
-  total_amount     Int // số tiền khách phải trả = tổng tiền hàng - discount_amount
+  total_amount     Int // số tiền khách phải trả = tổng tiền hàng - discount_amount + shipping_fee
   coupon_id        String?     @db.Uuid
   coupon_code      String      @default("") // bản chụp mã đã dùng (coupon bị xoá thì đơn vẫn giữ)
   discount_amount  Int         @default(0)
+  shipping_fee     Int         @default(0)
   shipping_name    String
   shipping_phone   String
   shipping_address String

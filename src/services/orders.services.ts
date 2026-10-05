@@ -5,6 +5,7 @@ import { ADDRESS_MESSAGES, ORDER_MESSAGES } from '~/constants/messages'
 import { ErrorWithStatus } from '~/models/Errors'
 import { CreateOrderReqBody, OrderListQuery } from '~/models/requests/Shop.requests'
 import { buildPage, getPagination } from '~/utils/pagination'
+import { calculateShippingFee } from '~/utils/shipping'
 import couponsServices from './coupons.services'
 import mailServices from './mail.services'
 
@@ -78,10 +79,14 @@ class OrdersServices {
         ? await couponsServices.redeem(tx, user_id, body.coupon_code, subtotal)
         : { coupon_id: null, coupon_code: '', discount_amount: 0 }
 
+      const goodsAmount = subtotal - coupon.discount_amount
+      const shippingFee = calculateShippingFee(goodsAmount)
+
       const order = await tx.order.create({
         data: {
           user_id,
-          total_amount: subtotal - coupon.discount_amount,
+          total_amount: goodsAmount + shippingFee,
+          shipping_fee: shippingFee,
           coupon_id: coupon.coupon_id,
           coupon_code: coupon.coupon_code,
           discount_amount: coupon.discount_amount,

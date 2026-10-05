@@ -76,6 +76,10 @@ Chưa có thanh toán online (đơn mặc định là thanh toán khi nhận hà
 
 Đơn `Pending` quá `ORDER_AUTO_CANCEL_HOURS` giờ (mặc định 48, `0` = tắt) chưa được xác nhận sẽ tự huỷ: trả hàng về kho, trả lượt dùng coupon và gửi mail cho khách. Job chạy mỗi 10 phút trong tiến trình server.
 
+### Phí vận chuyển
+
+Cấu hình bằng env: `SHIPPING_FEE` (mặc định 30000, `0` = luôn miễn phí) và `FREE_SHIPPING_THRESHOLD` (mặc định 500000: tiền hàng sau giảm giá từ mức này được miễn phí ship). `GET /cart` trả `shipping_fee` và `free_shipping_threshold` để FE hiện "mua thêm X để miễn phí ship". Đơn lưu `shipping_fee`; `total_amount` = tiền hàng − `discount_amount` + `shipping_fee` (doanh thu trong thống kê tính theo `total_amount`, tức đã gồm phí ship). `POST /coupons/validate` trả thêm `shipping_fee`, `total_amount` đã gồm phí ship.
+
 ### Sổ địa chỉ — `/addresses` (cần đăng nhập + đã verify email)
 
 `GET /addresses` (mặc định lên đầu), `POST /addresses {name, phone, address, is_default?}`, `PATCH /addresses/:id`, `DELETE /addresses/:id`. Tối đa 10 địa chỉ; địa chỉ đầu tiên tự là mặc định; đặt `is_default: true` để đổi mặc định; xoá địa chỉ mặc định thì địa chỉ mới nhất còn lại lên làm mặc định. Khi đặt hàng truyền `address_id` thay cho 3 trường `shipping_*`.

@@ -127,7 +127,8 @@ class MailServices {
       const discount = order.discount_amount
         ? `<tr><td>Giảm giá (${escapeHtml(order.coupon_code)})</td><td style="text-align:right">-${vnd(order.discount_amount)}</td></tr>`
         : ''
-      const table = `<table style="width:100%;border-collapse:collapse">${rows}${discount}<tr><td><b>Tổng thanh toán</b></td><td style="text-align:right"><b>${vnd(order.total_amount)}</b></td></tr></table>
+      const shipping = `<tr><td>Phí vận chuyển</td><td style="text-align:right">${order.shipping_fee ? vnd(order.shipping_fee) : 'Miễn phí'}</td></tr>`
+      const table = `<table style="width:100%;border-collapse:collapse">${rows}${discount}${shipping}<tr><td><b>Tổng thanh toán</b></td><td style="text-align:right"><b>${vnd(order.total_amount)}</b></td></tr></table>
 <p>Giao đến: ${escapeHtml(order.shipping_name)} - ${escapeHtml(order.shipping_phone)}<br>${escapeHtml(order.shipping_address)}</p>`
       const ref = order.id.slice(0, 8).toUpperCase()
       const created = kind === 'created'
