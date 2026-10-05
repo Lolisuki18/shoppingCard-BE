@@ -8,6 +8,12 @@ import {
   adminUpdateCouponController
 } from '~/controllers/coupons.controllers'
 import {
+  lowStockController,
+  overviewStatsController,
+  revenueStatsController,
+  topProductsController
+} from '~/controllers/stats.controllers'
+import {
   adminGetOrderController,
   adminGetOrdersController,
   adminUpdateOrderStatusController
@@ -19,8 +25,12 @@ import {
   couponListValidator,
   createCouponValidator,
   idParamValidator,
+  lowStockValidator,
   orderListValidator,
+  overviewStatsValidator,
   productListValidator,
+  revenueStatsValidator,
+  topProductsValidator,
   updateCouponValidator,
   updateOrderStatusValidator
 } from '~/middlewares/shop.middlewares'
@@ -82,5 +92,12 @@ adminRouter.delete(
   idParamValidator,
   wrapAsync(adminDeleteCouponController)
 )
+
+//thống kê (dashboard): chỉ Admin vì có số liệu doanh thu
+adminRouter.use('/stats', requireRoles(USER_ROLE.Admin))
+adminRouter.get('/stats/overview', overviewStatsValidator, wrapAsync(overviewStatsController))
+adminRouter.get('/stats/revenue', revenueStatsValidator, wrapAsync(revenueStatsController))
+adminRouter.get('/stats/top-products', topProductsValidator, wrapAsync(topProductsController))
+adminRouter.get('/stats/low-stock', lowStockValidator, wrapAsync(lowStockController))
 
 export default adminRouter

@@ -220,3 +220,16 @@ export const WISHLIST_MESSAGES = {
   ADD_SUCCESS: 'Add to wishlist success',
   REMOVE_SUCCESS: 'Remove from wishlist success'
 } as const
+
+export const STATS_MESSAGES = {
+  DATE_IS_INVALID: 'from / to must be ISO 8601 dates',
+  RANGE_IS_INVALID: 'from must be before to',
+  RANGE_TOO_LARGE: 'Range is too large for this group_by (max 366 days, or 60 months)',
+  GROUP_BY_IS_INVALID: 'group_by must be one of: day, month',
+  LIMIT_MUST_BE_FROM_1_TO_50: 'limit must be an integer from 1 to 50',
+  THRESHOLD_MUST_BE_A_NON_NEGATIVE_INTEGER: 'threshold must be a non-negative integer',
+  OVERVIEW_SUCCESS: 'Get overview success',
+  REVENUE_SUCCESS: 'Get revenue success',
+  TOP_PRODUCTS_SUCCESS: 'Get top products success',
+  LOW_STOCK_SUCCESS: 'Get low stock products success'
+} as const

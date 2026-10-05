@@ -9,6 +9,7 @@ import {
   ORDER_MESSAGES,
   PRODUCT_MESSAGES,
   REVIEW_MESSAGES,
+  STATS_MESSAGES,
   WISHLIST_MESSAGES
 } from '~/constants/messages'
 import { validate } from '~/utils/validation'
@@ -313,4 +314,56 @@ export const addToWishlistValidator = validate(
 )
 export const wishlistItemParamValidator = validate(
   checkSchema({ product_id: { in: ['params'], ...uuidSchema(WISHLIST_MESSAGES.PRODUCT_ID_IS_INVALID) } })
+)
+
+//---------------- thống kê (Admin) ----------------
+const statsDateSchema = (field: 'from' | 'to'): ParamSchema => ({
+  in: ['query'],
+  optional: true,
+  isISO8601: { errorMessage: STATS_MESSAGES.DATE_IS_INVALID },
+  toDate: true,
+  custom: {
+    //from phải đứng trước to (chỉ kiểm tra ở ô 'to' để báo lỗi 1 lần)
+    options: (value: Date, { req }) => {
+      if (field === 'to' && req.query?.from instanceof Date && value <= req.query.from) {
+        throw new Error(STATS_MESSAGES.RANGE_IS_INVALID)
+      }
+      return true
+    }
+  }
+})
+const statsRangeSchema = { from: statsDateSchema('from'), to: statsDateSchema('to') }
+
+export const overviewStatsValidator = validate(checkSchema(statsRangeSchema))
+export const revenueStatsValidator = validate(
+  checkSchema({
+    ...statsRangeSchema,
+    group_by: {
+      in: ['query'],
+      optional: true,
+      isIn: { options: [['day', 'month']], errorMessage: STATS_MESSAGES.GROUP_BY_IS_INVALID }
+    }
+  })
+)
+export const topProductsValidator = validate(
+  checkSchema({
+    ...statsRangeSchema,
+    limit: {
+      in: ['query'],
+      optional: true,
+      isInt: { options: { min: 1, max: 50 }, errorMessage: STATS_MESSAGES.LIMIT_MUST_BE_FROM_1_TO_50 },
+      toInt: true
+    }
+  })
+)
+export const lowStockValidator = validate(
+  checkSchema({
+    ...paginationSchema,
+    threshold: {
+      in: ['query'],
+      optional: true,
+      isInt: { options: { min: 0 }, errorMessage: STATS_MESSAGES.THRESHOLD_MUST_BE_A_NON_NEGATIVE_INTEGER },
+      toInt: true
+    }
+  })
 )

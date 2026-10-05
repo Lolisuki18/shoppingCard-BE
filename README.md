@@ -86,6 +86,17 @@ Sản phẩm có thêm `rating_avg` (0 nếu chưa có đánh giá) và `rating_
 | `GET /wishlist`, `POST /wishlist {product_id}`      | Đã đăng nhập | Thêm lần nữa không lỗi; sản phẩm đang ẩn không hiện trong danh sách                                       |
 | `DELETE /wishlist/:product_id`                      | Đã đăng nhập | 404 nếu không có trong danh sách                                                                          |
 
+### Thống kê (dashboard) — `/admin/stats`, chỉ Admin
+
+Doanh thu tính trên đơn `Delivered`, theo ngày tạo đơn; ngày/tháng cắt theo giờ Việt Nam (`Asia/Ho_Chi_Minh`). `from` tính, `to` không tính (`from <= created_at < to`), định dạng ISO 8601 (vd `2026-10-01`).
+
+| Method & path                                     | Ghi chú                                                                                                                                                              |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /admin/stats/overview?from&to`               | `revenue, discount_total, average_order_value, orders_total, orders_by_status, new_users, users_total, products_total, products_active`. Bỏ trống = từ trước đến nay |
+| `GET /admin/stats/revenue?from&to&group_by`       | `group_by=day` (mặc định) hoặc `month`; mặc định 30 ngày gần nhất, tối đa 366 ngày / 60 tháng. Kỳ không có đơn vẫn trả về với `0`                                    |
+| `GET /admin/stats/top-products?from&to&limit`     | Bán chạy theo số lượng (`limit` mặc định 10, tối đa 50). `revenue` là tiền hàng, chưa trừ mã giảm giá                                                                |
+| `GET /admin/stats/low-stock?threshold&page&limit` | Sản phẩm đang bán có `stock <= threshold` (mặc định 5), ít hàng nhất lên đầu                                                                                         |
+
 ### Phân quyền
 
 Role lưu trong DB (`0` Admin, `1` Staff, `2` User) và được kiểm tra mỗi request, nên đổi role hay khoá tài khoản có hiệu lực ngay.

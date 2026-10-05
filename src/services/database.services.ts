@@ -63,6 +63,11 @@ class DatabaseService {
     return this.client.coupon
   }
 
+  //câu lệnh SQL thô cho những báo cáo mà Prisma không diễn đạt được (luôn dùng dạng template để giá trị được tham số hoá)
+  get $queryRaw() {
+    return this.client.$queryRaw.bind(this.client) as PrismaClient['$queryRaw']
+  }
+
   //dùng khi cần nhiều thao tác phải thành công/thất bại cùng nhau (throw trong callback sẽ rollback tất cả)
   get $transaction() {
     return this.client.$transaction.bind(this.client) as PrismaClient['$transaction']

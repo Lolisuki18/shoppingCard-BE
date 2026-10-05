@@ -94,3 +94,18 @@ export type UpdateReviewReqBody = Partial<CreateReviewReqBody>
 export interface AddToWishlistReqBody {
   product_id: string
 }
+
+//thống kê (from tính, to KHÔNG tính: created_at >= from và < to)
+export interface StatsRangeQuery extends ParsedQs {
+  from?: any
+  to?: any
+}
+export interface RevenueQuery extends StatsRangeQuery {
+  group_by?: 'day' | 'month' | string
+}
+export interface TopProductsQuery extends StatsRangeQuery {
+  limit?: any
+}
+export interface LowStockQuery extends PaginationQuery {
+  threshold?: any
+}
