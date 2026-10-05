@@ -4,6 +4,7 @@ import { Request } from 'express'
 import { TokenPayLoad } from './models/requests/User.requests'
 declare module 'express' {
   interface Request {
+    request_id?: string
     decode_authorization?: TokenPayLoad
     decode_refresh_token?: TokenPayLoad
     decode_email_verify_token?: TokenPayLoad

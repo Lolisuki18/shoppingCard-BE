@@ -5,6 +5,7 @@ import helmet from 'helmet'
 import dotenv from 'dotenv'
 import userRouter from './routes/users.routers'
 import { defaultErrorHandler, notFoundHandler } from './middlewares/error.middleware'
+import { requestLogger } from './middlewares/requestLogger.middleware'
 import { globalLimiter } from './middlewares/rateLimit.middleware'
 import mediaRouter from './routes/medias.routers'
 import staticRouter from './routes/static.routers'
@@ -36,6 +37,7 @@ export const createApp = () => {
     app.set('trust proxy', /^\d+$/.test(value) ? Number(value) : value === 'true')
   }
   app.disable('x-powered-by')
+  app.use(requestLogger)
   //tài liệu API (Swagger UI) đặt trước helmet toàn cục vì cần CSP riêng
   if (docsEnabled()) app.use('/docs', docsRouter)
   //ảnh upload được FE ở domain khác nhúng vào nên cho phép cross-origin cho resource

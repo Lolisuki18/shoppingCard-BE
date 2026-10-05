@@ -3,10 +3,10 @@ import { OrderStatus } from '@prisma/client'
 import dotenv from 'dotenv'
 import databaseService from './database.services'
 import { logger } from '~/utils/logger'
+import { apiUrl } from '~/utils/publicUrl'
 dotenv.config()
 
 //địa chỉ BE (link xác thực email trỏ về BE) và FE (link đặt lại mật khẩu trỏ về FE)
-const apiUrl = () => (process.env.API_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/$/, '')
 const clientUrl = () => (process.env.CLIENT_URL || 'http://localhost:8000').replace(/\/$/, '')
 const shopName = () => process.env.SHOP_NAME || 'Shopping Card'
 

@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 //npm i dotenv : dùng để tải thư viện để xài .env
 import dotenv from 'dotenv'
+import { logger } from '~/utils/logger'
 dotenv.config() //kích hoạt liên kết env
 
 class DatabaseService {
@@ -15,9 +16,9 @@ class DatabaseService {
       // $connect là optional (Prisma tự connect khi query đầu tiên), nhưng gọi sớm để lỗi kết nối hiện ngay lúc bật server
       await this.client.$connect()
       await this.client.$queryRaw`SELECT 1`
-      console.log('Kết nối PostgreSQL thành công!')
+      logger.info('Kết nối PostgreSQL thành công!')
     } catch (err) {
-      console.log(err)
+      logger.error('Không kết nối được PostgreSQL', { error: err })
       throw err
     }
   }
@@ -45,6 +46,10 @@ class DatabaseService {
 
   get variants() {
     return this.client.productVariant
+  }
+
+  get orderItems() {
+    return this.client.orderItem
   }
 
   get cartItems() {

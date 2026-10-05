@@ -3,8 +3,12 @@ import sharp from 'sharp'
 import { UPLOAD_IMAGE_DIR } from '~/constants/dir'
 import { getNameFromFullNameFile, handleUploadImage, handleUploadVideo } from '~/utils/file'
 import fs from 'fs'
+import path from 'path'
+import databaseService from './database.services'
+import { logger } from '~/utils/logger'
 import { MediaType } from '~/constants/enums'
 import { Media } from '~/models/Other'
+import { apiUrl } from '~/utils/publicUrl'
 class MediasService {
   //upload nhìu bức ảnh
   async handleUploadImage(req: Request) {
@@ -34,7 +38,7 @@ class MediasService {
         fs.unlinkSync(file.filepath) // xoá file tạm đi
         //cung cấp router link để người dùng vào xem hình vừa up
         return {
-          url: `http://localhost:3000/static/image/${newFilename}`,
+          url: `${apiUrl()}/static/image/${newFilename}`,
           type: MediaType.Image
         } as Media
         //truyền ra cái url vì mình chỉ cần cái url để đi tới thôi chứ không cần lưu thông tin
@@ -57,13 +61,50 @@ class MediasService {
         const newFilename = file.newFilename
 
         return {
-          url: `http://localhost:3000/static/video/${newFilename}`,
+          url: `${apiUrl()}/static/video/${newFilename}`,
           type: MediaType.Video
         } as Media
         //truyền ra cái url vì mình chỉ cần cái url để đi tới thôi chứ không cần lưu thông tin
       })
     )
     return result
+  }
+}
+
+//URL ảnh do chính server này phục vụ -> tên file trong thư mục upload (URL ngoài / dạng khác trả undefined)
+export const localImageFilename = (url: string) => {
+  try {
+    const parsed = new URL(url)
+    if (parsed.origin !== new URL(apiUrl()).origin) return undefined
+    const match = /^\/static\/image\/([^/]+)$/.exec(parsed.pathname)
+    const name = match ? decodeURIComponent(match[1]) : undefined
+    return name && name === path.basename(name) && !name.startsWith('.') ? name : undefined
+  } catch {
+    return undefined
+  }
+}
+
+//xoá file ảnh upload không còn được ai dùng. Giữ lại ảnh còn được tham chiếu bởi sản phẩm khác, avatar/cover của user,
+//hoặc bản chụp trong đơn hàng cũ (order_items.product_image) để lịch sử đơn hàng không bị vỡ ảnh. Không bao giờ throw
+export const deleteUnusedImages = async (urls: string[]) => {
+  for (const url of new Set(urls)) {
+    const filename = localImageFilename(url)
+    if (!filename) continue
+    try {
+      const [product, user, orderItem] = await Promise.all([
+        databaseService.products.findFirst({ where: { images: { has: url } }, select: { id: true } }),
+        databaseService.users.findFirst({
+          where: { OR: [{ avatar: url }, { cover_photo: url }] },
+          select: { id: true }
+        }),
+        databaseService.orderItems.findFirst({ where: { product_image: url }, select: { id: true } })
+      ])
+      if (product || user || orderItem) continue
+      await fs.promises.unlink(path.join(UPLOAD_IMAGE_DIR, filename))
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT')
+        logger.warn('không xoá được ảnh không còn dùng', { url, error })
+    }
   }
 }
 

@@ -14,6 +14,7 @@ import { buildPage, getPagination } from '~/utils/pagination'
 import { aggregateVariants, syncProductAggregates } from '~/utils/productAggregates'
 import { isPrismaError } from '~/utils/prismaErrors'
 import { generateUniqueSlug } from '~/utils/slug'
+import { deleteUnusedImages } from './medias.services'
 
 type Tx = Prisma.TransactionClient
 
@@ -153,10 +154,12 @@ class ProductsServices {
   //price / stock chỉ dùng được với sản phẩm không có tuỳ chọn (sửa biến thể mặc định); sản phẩm có biến thể thì sửa ở /variants
   async update(id: string, payload: UpdateProductReqBody) {
     const { price, stock, variants: _ignored, ...fields } = payload
+    let removedImages: string[] = []
     try {
       await databaseService.$transaction(async (tx) => {
-        const product = await tx.product.findUnique({ where: { id }, select: { id: true } })
+        const product = await tx.product.findUnique({ where: { id }, select: { id: true, images: true } })
         if (!product) throw productNotFound()
+        if (fields.images) removedImages = product.images.filter((url) => !fields.images?.includes(url))
         if (price !== undefined || stock !== undefined) {
           const variants = await tx.productVariant.findMany({
             where: { product_id: id },
@@ -178,13 +181,15 @@ class ProductsServices {
       if (isPrismaError(error, 'P2003')) throw categoryNotFound() //category_id không tồn tại
       throw error
     }
+    void deleteUnusedImages(removedImages) //ảnh vừa bị gỡ khỏi sản phẩm, xoá file nếu không còn ai dùng
     return this.getById(id, { includeInactive: true })
   }
 
   //xoá cứng: các đơn cũ vẫn giữ nguyên nhờ order_items lưu sẵn tên/giá (product_id, variant_id chuyển thành null)
   async delete(id: string) {
     try {
-      await databaseService.products.delete({ where: { id } })
+      const deleted = await databaseService.products.delete({ where: { id }, select: { images: true } })
+      void deleteUnusedImages(deleted.images) //xoá file ảnh của sản phẩm (trừ ảnh đã nằm trong đơn hàng cũ)
     } catch (error) {
       if (isPrismaError(error, 'P2025')) throw productNotFound()
       throw error

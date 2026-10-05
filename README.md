@@ -17,6 +17,12 @@ npm run dev                 # http://localhost:3000
 
 Gửi qua SMTP (nodemailer): xác thực email, quên mật khẩu, xác nhận đơn, đổi trạng thái đơn. Cấu hình `SMTP_*`, `MAIL_FROM`, `API_URL`, `CLIENT_URL` trong `.env` (xem `.env.example`). Để trống `SMTP_HOST` thì nội dung mail chỉ được in ra log (tiện khi dev). Gửi mail lỗi chỉ ghi log, không làm request thất bại.
 
+## Vận hành
+
+- **Log:** `production` in mỗi log một dòng JSON (`LOG_LEVEL=debug|info|warn|error`). `LOG_REQUESTS=true` (mặc định ở production) ghi mỗi request: `request_id, method, url (bỏ query), status, duration_ms, user_id`. Mỗi response có header `X-Request-Id` (dùng lại id từ proxy nếu hợp lệ), cũng có trong log lỗi 500 để lần theo.
+- **Healthcheck:** `GET /health` (200 / 503 khi mất database). Tắt êm khi nhận `SIGTERM`/`SIGINT`.
+- **Ảnh upload:** URL ảnh/video dựng từ `API_URL`. Xoá sản phẩm hoặc gỡ ảnh khỏi sản phẩm thì file ảnh trong `uploads/images` được xoá nếu không còn nơi nào dùng (sản phẩm khác, avatar/cover của user, hoặc bản chụp trong đơn hàng cũ thì được giữ lại). Ảnh upload nhưng chưa từng gắn vào đâu sẽ không tự dọn.
+
 ## Test
 
 Test tích hợp chạy trên PostgreSQL thật (vitest + supertest), phủ đăng ký/đăng nhập, phân quyền, giỏ hàng, biến thể, đặt hàng, coupon, huỷ đơn, tự huỷ quá hạn, chống bán quá tồn kho khi đặt song song, thống kê, bảo mật và việc docs OpenAPI khớp với route thật.

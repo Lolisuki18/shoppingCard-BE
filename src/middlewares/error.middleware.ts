@@ -35,6 +35,7 @@ export const defaultErrorHandler = (error: any, req: Request, res: Response, nex
 
   //còn lại là lỗi không lường trước (bug, database lỗi...): ghi chi tiết vào log, KHÔNG trả chi tiết ra ngoài
   logger.error('unhandled error', {
+    request_id: req.request_id,
     method: req.method,
     url: req.originalUrl,
     user_id: req.decode_authorization?.user_id,
