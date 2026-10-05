@@ -17,6 +17,13 @@ npm run dev                 # http://localhost:3000
 
 Gửi qua SMTP (nodemailer): xác thực email, quên mật khẩu, xác nhận đơn, đổi trạng thái đơn. Cấu hình `SMTP_*`, `MAIL_FROM`, `API_URL`, `CLIENT_URL` trong `.env` (xem `.env.example`). Để trống `SMTP_HOST` thì nội dung mail chỉ được in ra log (tiện khi dev). Gửi mail lỗi chỉ ghi log, không làm request thất bại.
 
+## Bảo mật & lỗi
+
+- `helmet`, CORS theo `CORS_ORIGIN` (mặc định `CLIENT_URL`), body JSON tối đa 100kb.
+- Giới hạn tần suất theo IP (`express-rate-limit`, đếm trong bộ nhớ): toàn API 300 req/phút; đăng nhập 10 lần sai/15 phút; đăng ký 10/giờ; quên mật khẩu / gửi lại mail / reset mật khẩu 5/15 phút. Trả `429`. Sau reverse proxy đặt `TRUST_PROXY`.
+- Lỗi 500 chỉ trả `{ message: "Internal server error" }`, chi tiết ghi vào log (đặt `DEBUG_ERRORS=true` khi dev nếu muốn thấy). Đường dẫn không tồn tại trả 404, JSON sai cú pháp trả 400, body quá lớn trả 413.
+- `/static/*` chỉ phục vụ file nằm trực tiếp trong thư mục upload (đã chặn path traversal).
+
 ## Lệnh DB
 
 | Lệnh                        | Việc                                                     |

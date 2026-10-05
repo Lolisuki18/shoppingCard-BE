@@ -97,6 +97,11 @@ export const AUTH_MESSAGES = {
 } as const
 
 export const COMMON_MESSAGES = {
+  TOO_MANY_REQUESTS: 'Too many requests, please try again later',
+  INTERNAL_SERVER_ERROR: 'Internal server error',
+  INVALID_JSON: 'Request body is not valid JSON',
+  PAYLOAD_TOO_LARGE: 'Request body is too large',
+  ROUTE_NOT_FOUND: 'Route not found',
   ID_IS_INVALID: 'Id must be a valid UUID',
   PAGE_MUST_BE_A_POSITIVE_INTEGER: 'Page must be a positive integer',
   LIMIT_MUST_BE_FROM_1_TO_100: 'Limit must be an integer from 1 to 100'

@@ -27,6 +27,7 @@ import {
   updateMeValidator
 } from '~/middlewares/users.middlewares'
 import { UpdateMeReqBody } from '~/models/requests/User.requests'
+import { emailLimiter, loginLimiter, registerLimiter } from '~/middlewares/rateLimit.middleware'
 import { wrapAsync } from '~/utils/handlers'
 
 const userRouter = express.Router()
@@ -62,7 +63,7 @@ BODY:{
     email: string,
  
 }*/
-userRouter.post('/login', loginValidator, wrapAsync(loginController))
+userRouter.post('/login', loginLimiter, loginValidator, wrapAsync(loginController))
 
 /*
 Description: Register a new user
@@ -115,7 +116,7 @@ BODY:{
 //   }
 // )
 
-userRouter.post('/register', registerValidator, wrapAsync(registerController))
+userRouter.post('/register', registerLimiter, registerValidator, wrapAsync(registerController))
 
 //middleware ko dungf async nhìu -> nhìu lỗi hay j mình cũng next()  nên dùng throw cũng bình thường
 
@@ -159,7 +160,7 @@ path: users/resend-verify-email
 method: post 
 headers: {Authorization: 'Bearer <access_token>'}
 */
-userRouter.post('/resend-verify-email', accessTokenValidation, wrapAsync(resendEmailVarifyToken))
+userRouter.post('/resend-verify-email', emailLimiter, accessTokenValidation, wrapAsync(resendEmailVarifyToken))
 
 /*
 Description: thông báo bị quên mật khẩu, yêu cầu lấy lại -> gửi lên email
@@ -168,7 +169,7 @@ method: post
 path : users/forgot-password
 body: {email: string}
 */
-userRouter.post('/forgot-password', forgotPasswordValidator, wrapAsync(forgotPasswordController))
+userRouter.post('/forgot-password', emailLimiter, forgotPasswordValidator, wrapAsync(forgotPasswordController))
 
 /*
   Description : verify link in email to reset password
@@ -178,6 +179,7 @@ userRouter.post('/forgot-password', forgotPasswordValidator, wrapAsync(forgotPas
 */
 userRouter.post(
   '/verify-forgot-password',
+  emailLimiter,
   forgotPasswordTokenValidator, //
   wrapAsync(verifyForgotPasswordTokenController)
 )
@@ -195,6 +197,7 @@ userRouter.post(
 //lỗi 404 là thiếu dấu / chỗ đường đẫn
 userRouter.post(
   '/reset-password',
+  emailLimiter,
   forgotPasswordTokenValidator, //hàm này kiểm tra forgot_password_token
   resetPasswordValidator, //kiểm tra password,confirm_password
   wrapAsync(resetPasswordController)
