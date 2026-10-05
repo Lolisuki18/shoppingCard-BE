@@ -16,6 +16,8 @@ import couponRouter from './routes/coupons.routers'
 import reviewRouter from './routes/reviews.routers'
 import wishlistRouter from './routes/wishlist.routers'
 import addressRouter from './routes/addresses.routers'
+import docsRouter, { docsEnabled } from './routes/docs.routers'
+import healthRouter from './routes/health.routers'
 import adminRouter from './routes/admin.routers'
 
 dotenv.config()
@@ -34,6 +36,8 @@ export const createApp = () => {
     app.set('trust proxy', /^\d+$/.test(value) ? Number(value) : value === 'true')
   }
   app.disable('x-powered-by')
+  //tài liệu API (Swagger UI) đặt trước helmet toàn cục vì cần CSP riêng
+  if (docsEnabled()) app.use('/docs', docsRouter)
   //ảnh upload được FE ở domain khác nhúng vào nên cho phép cross-origin cho resource
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }))
   app.use(cors({ origin: corsOrigins() }))
@@ -41,6 +45,7 @@ export const createApp = () => {
   app.use(express.json({ limit: '100kb' })) // cho sever xài 1 middleware biến đổi json -> ko có cái này sẽ bị biến thành undefined
 
   //server dùng cái route đã tạo
+  app.use('/health', healthRouter)
   app.use('/users', userRouter)
   app.use('/medias', mediaRouter)
   app.use('/static', staticRouter)

@@ -38,6 +38,8 @@ Schema nằm ở `prisma/schema.prisma`.
 
 ## API
 
+Tài liệu tương tác (Swagger UI) tại **`/docs`**, đặc tả OpenAPI tại `/docs/openapi.json` (nguồn: `docs/openapi.yaml`; import được vào Postman/Insomnia). Mặc định bật khi không phải production, production đặt `ENABLE_DOCS=true` nếu muốn mở. `GET /health` kiểm tra server + database (200/503) cho load balancer.
+
 Mọi response có dạng `{ message, result }`. Header đăng nhập: `Authorization: Bearer <access_token>`.
 Giá tiền là số nguyên (VND). Danh sách phân trang trả `result: { items, page, limit, total, total_pages }`.
 
